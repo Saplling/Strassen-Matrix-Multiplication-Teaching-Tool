@@ -1,0 +1,1917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strassen's Fast Matrix Multiplication</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh;overflow-x:hidden;}
+:root{
+  --bg:#0d1117;--surf:#161b22;--brd:#30363d;
+  --txt:#e6edf3;--mut:#8b949e;
+  --blue:#58a6ff;--green:#3fb950;--red:#f85149;
+  --ora:#f0883e;--pur:#bc8cff;--yel:#e3b341;--cyn:#39c5cf;
+  --top:48px;--nav:60px;
+}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--brd);border-radius:4px;}
+
+/* ── Screens ── */
+.screen{display:none;}
+
+/* ══ HOME ══ */
+#homeScreen{min-height:100vh;display:none;flex-direction:column;align-items:center;justify-content:center;gap:52px;padding:40px 20px;}
+#homeScreen.active{display:flex;}
+.home-title{text-align:center;}
+.home-title h1{font-size:clamp(1.3rem,3.5vw,2rem);font-weight:700;margin-bottom:10px;}
+.home-title p{font-size:.88rem;color:var(--mut);max-width:460px;line-height:1.75;}
+.home-cards{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;}
+.home-card{width:190px;height:190px;background:var(--surf);border:1px solid var(--brd);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer;transition:all .2s;user-select:none;}
+.home-card:hover{border-color:var(--blue);background:#1b2233;transform:translateY(-4px);box-shadow:0 12px 40px #00000066;}
+.home-card:hover .cico{opacity:1;}
+.cico{opacity:.55;transition:opacity .2s;}
+.card-label{font-size:.9rem;font-weight:700;color:var(--txt);}
+.card-sub{font-size:.72rem;color:var(--mut);text-align:center;padding:0 16px;}
+
+/* ══ TOP BAR ══ */
+#topBar{display:none;position:fixed;top:0;left:0;right:0;height:var(--top);background:#10151c;border-bottom:1px solid var(--brd);z-index:200;align-items:center;padding:0 16px;gap:12px;}
+#topBar.vis{display:flex;}
+.home-btn{display:flex;align-items:center;gap:5px;background:none;border:1px solid var(--brd);color:var(--mut);border-radius:8px;padding:5px 12px;font-size:.77rem;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.home-btn:hover{color:var(--txt);border-color:var(--blue);}
+#topTitle{font-size:.8rem;font-weight:600;color:var(--mut);flex:1;}
+
+/* ══ LEARN VIS ══ */
+#learnScreen{display:none;}
+#learnScreen.active{display:block;}
+.learn-vis{position:relative;margin-top:var(--top);min-height:calc(100vh - var(--top) - var(--nav));background:#0a0e13;display:flex;align-items:center;justify-content:center;}
+.learn-vis::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--brd) 1px,transparent 1px),linear-gradient(90deg,var(--brd) 1px,transparent 1px);background-size:48px 48px;opacity:.1;pointer-events:none;}
+#slideVis{position:relative;z-index:1;width:100%;display:flex;align-items:center;justify-content:center;padding:14px 14px 80px;}
+
+/* Anim controls */
+#animCtrl{display:none;position:fixed;bottom:calc(var(--nav) + 12px);left:50%;transform:translateX(-50%);z-index:210;background:#0e1318dd;border:1px solid var(--brd);border-radius:10px;padding:7px 14px;backdrop-filter:blur(8px);gap:8px;align-items:center;}
+#animCtrl.vis{display:flex;}
+.ab{background:none;border:1px solid var(--brd);color:var(--txt);border-radius:6px;padding:5px 11px;font-size:.77rem;cursor:pointer;transition:all .15s;}
+.ab:hover:not(:disabled){border-color:var(--blue);color:var(--blue);}
+.ab:disabled{opacity:.28;cursor:not-allowed;}
+.acount{font-size:.7rem;color:var(--mut);min-width:40px;text-align:center;}
+
+/* Scroll hint */
+.scroll-hint{position:absolute;bottom:76px;left:50%;transform:translateX(-50%);color:var(--mut);font-size:.68rem;display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;animation:sbounce 2s infinite;opacity:.5;}
+@keyframes sbounce{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(5px);}}
+
+/* Explanation */
+.learn-expl{padding:44px 40px calc(var(--nav) + 48px);max-width:740px;margin:0 auto;}
+.learn-expl h3{font-size:1.05rem;font-weight:700;margin-bottom:14px;color:var(--txt);}
+.slide-body{font-size:.87rem;line-height:1.82;color:#9aa5b4;}
+.slide-body p{margin-bottom:12px;}
+.slide-body strong{color:var(--txt);}
+.slide-body em{font-style:normal;color:var(--blue);}
+.slide-body .formula{font-family:'Consolas',monospace;background:var(--surf);border-left:3px solid var(--pur);padding:9px 14px;margin:12px 0;border-radius:0 6px 6px 0;font-size:.84rem;color:var(--txt);}
+
+/* ══ SLIDE NAV ══ */
+#slideNav{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--nav);background:#10151c;border-top:1px solid var(--brd);z-index:200;align-items:center;justify-content:center;gap:18px;padding:0 20px;}
+#slideNav.vis{display:flex;}
+.nb{background:none;border:1px solid var(--brd);color:var(--txt);border-radius:8px;padding:7px 18px;font-size:.82rem;cursor:pointer;transition:all .15s;}
+.nb:hover:not(:disabled){background:var(--surf);border-color:var(--blue);}
+.nb:disabled{opacity:.28;cursor:not-allowed;}
+.dots{display:flex;gap:7px;align-items:center;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--brd);cursor:pointer;transition:all .2s;}
+.dot.on{background:var(--blue);width:20px;border-radius:3px;}
+
+/* ══ SOLVE SCREEN ══ */
+#solveScreen{display:none;}
+#solveScreen.active{display:block;padding-top:var(--top);}
+
+.solve-bar{position:sticky;top:var(--top);z-index:100;background:#10151c;border-bottom:1px solid var(--brd);}
+.solve-bar-hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 16px;}
+.solve-bar-hdr-l{font-size:.68rem;color:var(--mut);letter-spacing:.06em;text-transform:uppercase;}
+.solve-bar-toggle{background:none;border:1px solid var(--brd);color:var(--mut);border-radius:6px;padding:3px 10px;font-size:.72rem;cursor:pointer;transition:all .15s;user-select:none;}
+.solve-bar-toggle:hover{color:var(--blue);border-color:var(--blue);}
+.solve-bar-body{padding:8px 16px;overflow:hidden;transition:max-height .22s ease,padding .22s ease;max-height:400px;}
+.solve-bar-body.collapsed{max-height:0!important;padding-top:0;padding-bottom:0;}
+.srow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px;}
+.srow:last-child{margin-bottom:0;}
+.sig{display:flex;flex-direction:column;gap:3px;}
+.sig label{font-size:.63rem;color:var(--mut);text-transform:uppercase;letter-spacing:.07em;}
+.prow{display:flex;gap:5px;flex-wrap:wrap;}
+.pr{background:var(--surf);border:1px solid var(--brd);color:var(--mut);padding:4px 9px;border-radius:6px;font-size:.71rem;cursor:pointer;transition:all .15s;}
+.pr:hover{color:var(--blue);border-color:var(--blue);}
+.spd{display:flex;align-items:center;gap:7px;}
+.spd label{font-size:.63rem;color:var(--mut);text-transform:uppercase;letter-spacing:.07em;}
+.spd input[type=range]{width:88px;accent-color:var(--blue);cursor:pointer;}
+.spd-v{font-size:.75rem;color:var(--blue);font-weight:700;min-width:26px;}
+.btn{background:var(--surf);border:1px solid var(--brd);color:var(--txt);padding:6px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;transition:all .15s;}
+.btn:hover:not(:disabled){background:var(--brd);}
+.btn:disabled{opacity:.28;cursor:not-allowed;}
+.bpri{background:#1f6feb;border-color:#1f6feb;color:#fff;}
+.bpri:hover:not(:disabled){background:#388bfd;}
+.bgrn{border-color:#1a5c24;color:var(--green);}
+.byel{border-color:#5c4a00;color:var(--yel);}
+.bred{border-color:#5c1111;color:var(--red);}
+.sc{font-size:.74rem;color:var(--mut);}
+.sc em{color:var(--blue);font-style:normal;font-weight:700;}
+.spill{padding:3px 10px;border-radius:12px;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+.s-idle{background:var(--surf);color:var(--mut);}
+.s-ready{background:#1f6feb14;color:var(--blue);border:1px solid #1f6feb44;}
+.s-playing{background:#23863614;color:var(--green);border:1px solid #23863644;}
+.s-paused{background:#9e6a0314;color:var(--yel);border:1px solid #9e6a0344;}
+.s-done{background:#23863614;color:var(--green);border:1px solid #23863644;}
+
+/* Matrix input grid */
+.mat-wrap{display:inline-block;}
+.mat-grid{display:grid;gap:2px;}
+.mat-cell{width:30px;height:24px;background:var(--bg);border:1px solid var(--brd);color:var(--txt);font-family:'Consolas',monospace;font-size:.78rem;text-align:center;outline:none;border-radius:3px;-moz-appearance:textfield;}
+.mat-cell::-webkit-outer-spin-button,.mat-cell::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.mat-cell:focus{border-color:var(--blue);}
+.size-btn{padding:5px 10px;font-size:.74rem;}
+.size-btn.on{background:#1f6feb;border-color:#1f6feb;color:#fff;}
+.mat-lbl{font-size:.72rem;color:var(--mut);margin-bottom:3px;text-align:center;font-weight:600;}
+
+/* Solve visual area */
+.solve-vis{min-height:calc(100vh - var(--top) - 140px);background:#0a0e13;position:relative;display:flex;flex-direction:column;gap:10px;padding:12px 16px 20px;border-bottom:1px solid var(--brd);}
+.solve-vis::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--brd) 1px,transparent 1px),linear-gradient(90deg,var(--brd) 1px,transparent 1px);background-size:48px 48px;opacity:.09;pointer-events:none;}
+.solve-leg{display:flex;flex-wrap:wrap;gap:6px 14px;z-index:1;flex-shrink:0;}
+.sli{display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--mut);}
+.sld{width:8px;height:8px;border-radius:50%;}
+.solve-eq{z-index:1;flex-shrink:0;background:#0d111799;border:1px solid var(--brd);border-radius:8px;padding:10px 16px;text-align:center;font-family:'Consolas',monospace;font-size:.96rem;min-height:44px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;color:#3a4050;line-height:1.5;}
+.solve-tbl{flex:1;min-height:260px;overflow-x:auto;z-index:1;}
+.solve-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:var(--mut);font-size:.66rem;display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;animation:sbounce 2s infinite;opacity:.4;}
+
+/* Solve explanation area */
+.solve-expl{padding:28px 16px 60px;max-width:920px;margin:0 auto;}
+.card{background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:14px 16px;margin-bottom:14px;}
+.ctitle{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--mut);margin-bottom:10px;}
+.res-box{display:none;background:#0c1a0f;border:1px solid #1a5c24;border-radius:10px;padding:12px 16px;margin-bottom:14px;}
+.res-box.show{display:block;}
+.res-box h4{color:var(--green);font-size:.85rem;margin-bottom:8px;}
+.rl{font-family:'Consolas',monospace;font-size:.85rem;margin-bottom:5px;}
+.expl-box{background:var(--bg);border-radius:8px;padding:11px 14px;font-size:.82rem;line-height:1.72;min-height:48px;color:var(--mut);border-left:3px solid var(--brd);transition:border-color .2s;}
+.expl-box.live{border-left-color:var(--blue);color:#c9d1d9;}
+.pseudo{background:var(--bg);border-radius:8px;padding:8px;font-family:'Consolas',monospace;font-size:.76rem;line-height:1.8;max-height:300px;overflow-y:auto;}
+.pl{display:flex;gap:8px;padding:2px 6px;border-radius:4px;cursor:help;position:relative;transition:background .12s;}
+.pl:hover{background:var(--surf);}
+.pl.hl{background:#1f6feb1e;border-left:2px solid var(--blue);padding-left:4px;}
+.pn{color:#3a4050;min-width:16px;text-align:right;user-select:none;}
+.pc{color:var(--txt);}
+.kw{color:var(--red);}
+.ptip{display:none;position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);background:var(--surf);border:1px solid var(--brd);color:#c9d1d9;padding:6px 10px;border-radius:6px;font-size:.71rem;max-width:230px;z-index:50;font-family:'Segoe UI',sans-serif;line-height:1.5;pointer-events:none;white-space:normal;}
+.pl:hover .ptip{display:block;}
+.strow{display:flex;gap:8px;flex-wrap:wrap;}
+.stb{flex:1;min-width:68px;background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:8px 10px;text-align:center;}
+.stv{font-size:1.2rem;font-weight:700;}
+.stl{font-size:.62rem;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
+.hist-wrap{max-height:190px;overflow-y:auto;border-radius:8px;border:1px solid var(--brd);}
+.hist-t{width:100%;border-collapse:collapse;font-size:.74rem;}
+.hist-t th{background:var(--surf);color:var(--mut);padding:7px 10px;text-align:center;font-weight:600;position:sticky;top:0;z-index:5;}
+.hist-t td{padding:6px 10px;text-align:center;border-bottom:1px solid #1c2128;color:var(--mut);cursor:pointer;transition:background .1s;}
+.hist-t tr:hover td{background:var(--surf);color:var(--txt);}
+.hist-t tr.cur td{background:#1f6feb18;color:var(--blue);}
+.con{border-left:3px solid var(--pur);border-radius:0 8px 8px 0;padding:9px 14px;margin-bottom:8px;background:var(--bg);font-size:.79rem;line-height:1.65;}
+.con:last-child{margin-bottom:0;}
+.con h5{font-size:.68rem;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;color:var(--pur);}
+.con.cg{border-left-color:var(--green);}.con.cg h5{color:var(--green);}
+.con.cb{border-left-color:var(--blue);}.con.cb h5{color:var(--blue);}
+.con.co{border-left-color:var(--ora);}.con.co h5{color:var(--ora);}
+.con.cr{border-left-color:var(--red);}.con.cr h5{color:var(--red);}
+.con.cy{border-left-color:var(--cyn);}.con.cy h5{color:var(--cyn);}
+
+/* Crossover chart */
+.co-wrap{display:flex;flex-direction:column;gap:8px;}
+.co-info{font-family:'Consolas',monospace;font-size:.78rem;line-height:1.7;padding:8px 12px;background:var(--bg);border-radius:6px;min-height:36px;}
+.co-slider-row{display:flex;align-items:center;gap:8px;}
+.co-slider-row span{font-size:.68rem;color:var(--mut);white-space:nowrap;}
+.co-slider-row input{flex:1;accent-color:var(--blue);}
+
+/* Recursion tree (below fold) */
+.rtree-svg{display:block;width:100%;max-width:640px;margin:0 auto;}
+
+@media(max-width:600px){
+  .home-card{width:155px;height:155px;}
+  .learn-expl{padding:32px 20px calc(var(--nav) + 32px);}
+  .solve-expl{padding:16px 10px 48px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════ HOME ══════ -->
+<div id="homeScreen" class="screen active">
+  <div class="home-title">
+    <h1>Strassen's Fast<br>Matrix Multiplication</h1>
+    <p>An interactive teaching tool — explore the divide-and-conquer algorithm that broke the n³ barrier</p>
+  </div>
+  <div class="home-cards">
+    <div class="home-card" onclick="goLearn()">
+      <div class="cico">
+        <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+          <rect x="9" y="7" width="15" height="38" rx="3" fill="none" stroke="#58a6ff" stroke-width="1.8"/>
+          <rect x="28" y="7" width="15" height="38" rx="3" fill="none" stroke="#58a6ff" stroke-width="1.8"/>
+          <line x1="9" y1="20" x2="24" y2="20" stroke="#58a6ff" stroke-width="1.3" opacity=".4"/>
+          <line x1="9" y1="29" x2="24" y2="29" stroke="#58a6ff" stroke-width="1.3" opacity=".4"/>
+          <line x1="28" y1="20" x2="43" y2="20" stroke="#58a6ff" stroke-width="1.3" opacity=".4"/>
+          <line x1="28" y1="29" x2="43" y2="29" stroke="#58a6ff" stroke-width="1.3" opacity=".4"/>
+          <circle cx="26" cy="8" r="3.5" fill="#58a6ff" opacity=".85"/>
+        </svg>
+      </div>
+      <div class="card-label">Learn</div>
+      <div class="card-sub">Concepts &amp; background</div>
+    </div>
+    <div class="home-card" onclick="goSolve()">
+      <div class="cico">
+        <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+          <rect x="6" y="8" width="16" height="16" rx="3" fill="none" stroke="#58a6ff" stroke-width="1.8"/>
+          <rect x="30" y="8" width="16" height="16" rx="3" fill="none" stroke="#58a6ff" stroke-width="1.8"/>
+          <rect x="6" y="30" width="16" height="16" rx="3" fill="none" stroke="#3fb950" stroke-width="1.8"/>
+          <rect x="30" y="30" width="16" height="16" rx="3" fill="none" stroke="#3fb950" stroke-width="1.8"/>
+          <text x="14" y="20" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#58a6ff">A</text>
+          <text x="38" y="20" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#58a6ff">B</text>
+          <text x="14" y="42" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#3fb950">×</text>
+          <text x="38" y="42" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#3fb950">C</text>
+        </svg>
+      </div>
+      <div class="card-label">Visualize</div>
+      <div class="card-sub">Step-by-step solver</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ TOP BAR ══════ -->
+<div id="topBar">
+  <button class="home-btn" onclick="goHome()">← Home</button>
+  <span id="topTitle"></span>
+</div>
+
+<!-- ══════ LEARN ══════ -->
+<div id="learnScreen" class="screen">
+  <div class="learn-vis">
+    <div id="slideVis"></div>
+    <div id="animCtrl">
+      <button class="ab" id="abPrev" onclick="aStepBack()">◀</button>
+      <button class="ab" id="abPlay" onclick="aToggle()">▶ Play</button>
+      <button class="ab" id="abStep" onclick="aStepFwd()">Step ▶</button>
+      <span class="acount" id="aCount">0 / 0</span>
+    </div>
+    <div class="scroll-hint">
+      <svg width="13" height="8" viewBox="0 0 13 8"><path d="M1 1l5.5 5.5L12 1" stroke="#8b949e" stroke-width="1.7" fill="none" stroke-linecap="round"/></svg>
+      scroll for explanation
+    </div>
+  </div>
+  <div class="learn-expl">
+    <h3 id="explTitle"></h3>
+    <div class="slide-body" id="explBody"></div>
+  </div>
+</div>
+
+<!-- ══════ SLIDE NAV ══════ -->
+<div id="slideNav">
+  <button class="nb" id="prevBtn" onclick="prevSlide()">← Back</button>
+  <div class="dots" id="slideDots"></div>
+  <button class="nb" id="nextBtn" onclick="nextSlide()">Next →</button>
+</div>
+
+<!-- ══════ SOLVE ══════ -->
+<div id="solveScreen" class="screen">
+  <div class="solve-bar">
+    <div class="solve-bar-hdr">
+      <span class="solve-bar-hdr-l">Controls</span>
+      <button class="solve-bar-toggle" id="barToggle" onclick="toggleBar()">▲ Hide</button>
+    </div>
+    <div class="solve-bar-body" id="solveBarBody">
+    <div class="srow">
+      <div class="sig">
+        <label>Matrix Size</label>
+        <div style="display:flex;gap:4px">
+          <button class="btn size-btn on" id="sz2" onclick="setSize(2)">2×2</button>
+          <button class="btn size-btn" id="sz4" onclick="setSize(4)">4×4</button>
+        </div>
+      </div>
+      <div class="sig">
+        <div class="mat-lbl">Matrix A</div>
+        <div class="mat-wrap" id="matAWrap"></div>
+      </div>
+      <div class="sig">
+        <div class="mat-lbl">Matrix B</div>
+        <div class="mat-wrap" id="matBWrap"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <label style="font-size:.63rem;color:var(--mut);text-transform:uppercase;letter-spacing:.07em">Presets</label>
+        <div class="prow" id="presetsRow"></div>
+      </div>
+      <div class="spd">
+        <label>Speed</label>
+        <input type="range" id="spdSlider" min=".25" max="4" step=".25" value="1" oninput="setSpd(+this.value)">
+        <span class="spd-v" id="spdVal">1×</span>
+      </div>
+    </div>
+    <div class="srow" style="gap:6px">
+      <button class="btn bpri" onclick="buildSteps()">⚙ Build</button>
+      <button class="btn" id="btnStep" onclick="sStep()" disabled>Step</button>
+      <button class="btn bgrn" id="btnPlay" onclick="sPlay()" disabled>▶ Play</button>
+      <button class="btn byel" id="btnPause" onclick="sPause()" disabled>⏸</button>
+      <button class="btn bred" onclick="sReset()">↺ Reset</button>
+      <span class="sc" style="margin-left:4px">Step <em id="sCur">0</em> / <em id="sTotal">0</em></span>
+      <span class="spill s-idle" id="spill">Idle</span>
+    </div>
+    </div><!-- /solve-bar-body -->
+  </div>
+
+  <!-- Visual area (above fold) -->
+  <div class="solve-vis">
+    <div class="solve-leg" id="solLeg"></div>
+    <div class="solve-eq" id="eqDisp">Build steps to begin</div>
+    <div class="solve-tbl"><svg id="mainSVG" width="100%" height="40"></svg></div>
+    <div class="solve-hint">
+      <svg width="13" height="8" viewBox="0 0 13 8"><path d="M1 1l5.5 5.5L12 1" stroke="#8b949e" stroke-width="1.7" fill="none" stroke-linecap="round"/></svg>
+      scroll for details
+    </div>
+  </div>
+
+  <!-- Explanation area (below fold) -->
+  <div class="solve-expl">
+    <div class="res-box" id="resBox">
+      <h4>✓ Result</h4>
+      <div class="rl" id="rlMult"></div>
+      <div class="rl" id="rlSaved"></div>
+      <div class="rl" id="rlMatrix"></div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">Step Explanation</div>
+      <div class="expl-box" id="explBox">Click Build, then Step or Play to animate.</div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">Pseudocode</div>
+      <div class="pseudo" id="pseudo"></div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">Live Statistics</div>
+      <div class="strow">
+        <div class="stb"><div class="stv" id="stMul" style="color:var(--blue)">0</div><div class="stl">Multiplications</div></div>
+        <div class="stb"><div class="stv" id="stNaive" style="color:var(--ora)">—</div><div class="stl">Naive Would Use</div></div>
+        <div class="stb"><div class="stv" id="stSaved" style="color:var(--green)">—</div><div class="stl">Saved</div></div>
+        <div class="stb"><div class="stv" id="stPhase" style="color:var(--pur)">—</div><div class="stl">Phase</div></div>
+      </div>
+    </div>
+
+    <div class="card" id="rtreeCard" style="display:none">
+      <div class="ctitle">Recursion Tree</div>
+      <svg class="rtree-svg" id="rtreeSVG" viewBox="0 0 640 130" height="130"></svg>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">Step History &nbsp;·&nbsp; Click row to jump</div>
+      <div class="hist-wrap">
+        <table class="hist-t">
+          <thead><tr>
+            <th>Step</th>
+            <th>Phase</th>
+            <th>Label</th>
+            <th>Result</th>
+          </tr></thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">Complexity Crossover — Total Arithmetic Operations (Mults + Adds)</div>
+      <div class="co-wrap">
+        <svg id="coChart" viewBox="0 0 420 185" width="100%" style="max-width:520px;display:block"></svg>
+        <div class="co-slider-row">
+          <span>n=2</span>
+          <input type="range" id="coSlider" min="0" max="9" step="1" value="4" oninput="updateCrossover(+this.value)">
+          <span>n=1024</span>
+        </div>
+        <div class="co-info" id="coInfo">Move the slider to compare operation counts at different matrix sizes.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">Key Concepts</div>
+      <div class="con cb"><h5>The 7 Subproducts</h5>Strassen's formulas use <strong>P₁–P₇</strong> which are cleverly designed so that only <strong>7 scalar multiplications</strong> are needed to produce the four output quadrants — down from 8 in the naive approach.</div>
+      <div class="con co"><h5>Recurrence &amp; Complexity</h5><strong>T(n) = 7T(n/2) + O(n²)</strong> — by the Master Theorem, this solves to O(n<sup>log₂7</sup>) ≈ <strong>O(n²·⁸⁰⁷)</strong>, compared to O(n³) for naive.</div>
+      <div class="con cg"><h5>Parallelism</h5>P₁ through P₇ are <strong>independent</strong> — they share no data dependencies. All seven can be computed simultaneously on parallel hardware, giving O(log²n) parallel depth.</div>
+      <div class="con cr"><h5>Practical Notes</h5>Constant factors and cache effects mean Strassen is only faster in practice for <strong>n ≳ 64–128</strong>. For non-power-of-2 sizes, the matrix is padded. Modern records: Coppersmith-Winograd → O(n²·³⁷³).</div>
+      <div class="con cy"><h5>Independence of Subproblems</h5>The 7 recursive subproblems operate on <strong>non-overlapping</strong> linear combinations of A and B quadrants. No subproblem depends on another's output — enabling both recursion and parallelism.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+const A = {
+  mode:'home',
+  sl:0, aStep:0, aPlay:false, aTimer:null,
+  matSize:2,
+  steps:[], cur:-1, solSt:'idle', solTimer:null, solSpd:1,
+};
+
+// ═══════════════════════════════════════════════
+// SVG HELPERS
+// ═══════════════════════════════════════════════
+function mksvg(body,w=800,h=340){
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="max-width:960px;display:block;margin:0 auto">${body}</svg>`;
+}
+function st(x,y,t,o={}){
+  const{f='#e6edf3',s=14,a='middle',w='normal',ff='Segoe UI,sans-serif',op=1}=o;
+  return `<text x="${x}" y="${y}" text-anchor="${a}" font-family="${ff}" font-size="${s}" font-weight="${w}" fill="${f}" opacity="${op}">${t}</text>`;
+}
+function sr(x,y,rw,rh,o={}){
+  const{f='#161b22',k='#30363d',rx=8,sw=1}=o;
+  return `<rect x="${x}" y="${y}" width="${rw}" height="${rh}" rx="${rx}" fill="${f}" stroke="${k}" stroke-width="${sw}"/>`;
+}
+const DEFS=`<defs>
+<marker id="ab" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#58a6ff"/></marker>
+<marker id="ag" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#3fb950"/></marker>
+<marker id="ar" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#f85149"/></marker>
+<marker id="am" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#484f58"/></marker>
+</defs>`;
+
+// ═══════════════════════════════════════════════
+// STRASSEN CONSTANTS
+// ═══════════════════════════════════════════════
+// P1-P7 colors
+const PC=['#58a6ff','#3fb950','#f85149','#f0883e','#bc8cff','#e3b341','#39c5cf'];
+const PL=['P₁','P₂','P₃','P₄','P₅','P₆','P₇'];
+
+// A cell highlights per Pi (2×2: row,col indexing)
+const PHL_A2=[[[0,0],[1,1]],[[1,0],[1,1]],[[0,0]],[[1,1]],[[0,0],[0,1]],[[1,0],[0,0]],[[0,1],[1,1]]];
+const PHL_B2=[[[0,0],[1,1]],[[0,0]],[[0,1],[1,1]],[[1,0],[0,0]],[[1,1]],[[0,0],[0,1]],[[1,0],[1,1]]];
+// A quadrant highlights per Pi (4×4: quadrant row,col → maps to 2×2 block)
+const PHL_A4=[[[0,0],[1,1]],[[1,0],[1,1]],[[0,0]],[[1,1]],[[0,0],[0,1]],[[1,0],[0,0]],[[0,1],[1,1]]];
+const PHL_B4=[[[0,0],[1,1]],[[0,0]],[[0,1],[1,1]],[[1,0],[0,0]],[[1,1]],[[0,0],[0,1]],[[1,0],[1,1]]];
+
+// Pi symbolic formula strings
+const PFORM_SYM=[
+  '(A₁₁+A₂₂)(B₁₁+B₂₂)',
+  '(A₂₁+A₂₂)·B₁₁',
+  'A₁₁·(B₁₂−B₂₂)',
+  'A₂₂·(B₂₁−B₁₁)',
+  '(A₁₁+A₁₂)·B₂₂',
+  '(A₂₁−A₁₁)·(B₁₁+B₁₂)',
+  '(A₁₂−A₂₂)·(B₂₁+B₂₂)',
+];
+const CFORM_SYM=['C₁₁ = P₁+P₄−P₅+P₇','C₁₂ = P₃+P₅','C₂₁ = P₂+P₄','C₂₂ = P₁−P₂+P₃+P₆'];
+
+// ═══════════════════════════════════════════════
+// MATRIX HELPERS
+// ═══════════════════════════════════════════════
+function addM(A,B){return A.map((r,i)=>r.map((v,j)=>v+B[i][j]));}
+function subM(A,B){return A.map((r,i)=>r.map((v,j)=>v-B[i][j]));}
+function nullMat(n){return Array.from({length:n},()=>Array(n).fill(null));}
+function getQ(M,qr,qc){const h=M.length>>1;return M.slice(qr*h,(qr+1)*h).map(r=>r.slice(qc*h,(qc+1)*h));}
+function combineQ(C11,C12,C21,C22){return[[...C11[0],...C12[0]],[...C11[1],...C12[1]],[...C21[0],...C22[0]],[...C21[1],...C22[1]]];}
+function quadCells(qr,qc){const r0=qr*2,c0=qc*2;return[[r0,c0],[r0,c0+1],[r0+1,c0],[r0+1,c0+1]];}
+function fmtMat(M){return M.map(r=>'['+r.join(', ')+']').join(', ');}
+// 2×2 Strassen (scalar)
+function stras2(X){
+  const[[a,b],[c,d]]=X[0],[[e,f],[g,h]]=X[1];
+  const P1=(a+d)*(e+h),P2=(c+d)*e,P3=a*(f-h),P4=d*(g-e),P5=(a+b)*h,P6=(c-a)*(e+f),P7=(b-d)*(g+h);
+  return{P:[P1,P2,P3,P4,P5,P6,P7],C:[[P1+P4-P5+P7,P3+P5],[P2+P4,P1-P2+P3+P6]]};
+}
+// Multiply two n×n matrices (naive, for verification only)
+function naiveMul(A,B){
+  const n=A.length;const C=Array.from({length:n},()=>Array(n).fill(0));
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++)for(let k=0;k<n;k++)C[i][j]+=A[i][k]*B[k][j];
+  return C;
+}
+
+// ═══════════════════════════════════════════════
+// LEARN SLIDES — SVG RENDER FUNCTIONS
+// ═══════════════════════════════════════════════
+
+// Helper: draw an n×n matrix grid in an SVG fragment
+function drawMatSVG(x0,y0,n,cs,data,hls=[],dashed=false){
+  let s='';
+  const W=n*cs,H=n*cs;
+  s+=sr(x0,y0,W,H,{f:'#0a0e13',k:'#30363d',rx:3,sw:1.5});
+  for(let i=1;i<n;i++){
+    s+=`<line x1="${x0+i*cs}" y1="${y0}" x2="${x0+i*cs}" y2="${y0+H}" stroke="#21262d" stroke-width="1"/>`;
+    s+=`<line x1="${x0}" y1="${y0+i*cs}" x2="${x0+W}" y2="${y0+i*cs}" stroke="#21262d" stroke-width="1"/>`;
+  }
+  for(const{cells,color}of hls){
+    for(const[r,c]of cells){
+      s+=`<rect x="${x0+c*cs}" y="${y0+r*cs}" width="${cs}" height="${cs}" fill="${color}28" stroke="${color}" stroke-width="1.8" rx="1"/>`;
+    }
+  }
+  if(data){
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+      const v=data[r][c];
+      if(v!==null&&v!==undefined){
+        const sv=String(v);
+        s+=st(x0+c*cs+cs/2,y0+r*cs+cs/2+4,sv,{s:sv.length>3?8:sv.length>2?10:12,f:'#e6edf3',ff:'Consolas,monospace'});
+      }
+    }
+  }
+  if(dashed&&n===4){
+    const m=n/2*cs;
+    s+=`<line x1="${x0+m}" y1="${y0}" x2="${x0+m}" y2="${y0+H}" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="4,3" opacity=".7"/>`;
+    s+=`<line x1="${x0}" y1="${y0+m}" x2="${x0+W}" y2="${y0+m}" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="4,3" opacity=".7"/>`;
+  }
+  return s;
+}
+
+// ── Slide 0: The Multiplication Problem ──
+function rSlide0(step){
+  const W=800,H=440;let h='';
+  h+=st(W/2,26,'The Multiplication Problem',{s:17,w:'bold'});
+  h+=st(W/2,46,'Where does O(n³) come from? What does each n represent?',{s:10,f:'#8b949e'});
+
+  // 3×3 concrete example
+  const cs=50,n=3,mw=n*cs; // mw=150
+  const ax=58,bx=ax+mw+60,cx=bx+mw+60,matY=86;
+  // ax=58, bx=268, cx=478. Right edge=628 ✓
+
+  const aL=[['a','b','c'],['d','e','f'],['g','h','i']];
+  const bL=[['j','k','l'],['m','n','o'],['p','q','r']];
+
+  if(step>=1){
+    // A matrix — highlight row 0 from step 2 onward
+    const hlA=step>=2?[{cells:[[0,0],[0,1],[0,2]],color:'#58a6ff'}]:[];
+    h+=drawMatSVG(ax,matY,n,cs,null,hlA);
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+      h+=st(ax+c*cs+cs/2,matY+r*cs+cs/2+5,aL[r][c],
+        {s:15,f:(step>=2&&r===0)?'#58a6ff':'#58a6ff66',ff:'Consolas,monospace'});
+    }
+    h+=st(ax+mw/2,matY-14,'A  (n × n)',{s:10,f:'#8b949e'});
+    h+=st(ax+mw+18,matY+mw/2+5,'×',{s:22,f:'#484f58'});
+
+    // B matrix — highlight col 0 from step 3 onward
+    const hlB=step>=3?[{cells:[[0,0],[1,0],[2,0]],color:'#f0883e'}]:[];
+    h+=drawMatSVG(bx,matY,n,cs,null,hlB);
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+      h+=st(bx+c*cs+cs/2,matY+r*cs+cs/2+5,bL[r][c],
+        {s:15,f:(step>=3&&c===0)?'#f0883e':'#f0883e66',ff:'Consolas,monospace'});
+    }
+    h+=st(bx+mw/2,matY-14,'B  (n × n)',{s:10,f:'#8b949e'});
+    h+=st(bx+mw+18,matY+mw/2+5,'=',{s:22,f:'#484f58'});
+
+    // C matrix — highlight C[0][0] at step 4, all cells at step 5
+    const allCells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)allCells.push([r,c]);
+    const hlC=step>=5?[{cells:allCells,color:'#3fb950'}]
+             :step>=4?[{cells:[[0,0]],color:'#3fb950'}]:[];
+    h+=drawMatSVG(cx,matY,n,cs,null,hlC);
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+      const on=(step>=5)||(step>=4&&r===0&&c===0);
+      h+=st(cx+c*cs+cs/2,matY+r*cs+cs/2+5,'·',
+        {s:on?18:12,f:on?'#3fb950':'#2a3042',ff:'Consolas,monospace'});
+    }
+    h+=st(cx+mw/2,matY-14,'C  (n × n)',{s:10,f:'#8b949e'});
+  }
+
+  // Step 2 annotation: n entries in this row
+  if(step>=2){
+    h+=sr(ax,matY+mw+10,mw,24,{f:'#58a6ff0a',k:'#58a6ff33',rx:5,sw:1});
+    h+=st(ax+mw/2,matY+mw+25,'← n entries in this row',{s:9.5,f:'#58a6ff',ff:'Consolas,monospace'});
+  }
+
+  // Step 3 annotation: n entries in this col
+  if(step>=3){
+    h+=sr(bx,matY+mw+10,mw,24,{f:'#f0883e0a',k:'#f0883e33',rx:5,sw:1});
+    h+=st(bx+mw/2,matY+mw+25,'← n entries in this col',{s:9.5,f:'#f0883e',ff:'Consolas,monospace'});
+  }
+
+  // Step 4: one dot-product → one cell
+  if(step>=4){
+    const ey=matY+mw+48;
+    h+=sr(40,ey,W-80,52,{f:'#3fb95010',k:'#3fb95044',rx:8});
+    h+=st(W/2,ey+18,'C[i][j]  =  a·j + b·m + c·p   (dot product of row i and col j)',{s:11,f:'#3fb950',ff:'Consolas,monospace'});
+    h+=st(W/2,ey+36,'→  n multiplications per cell of C',{s:10,f:'#8b949e'});
+  }
+
+  // Step 5: all cells → n³ total
+  if(step>=5){
+    const ey=matY+mw+118;
+    h+=sr(40,ey,W-80,54,{f:'#f0883e0a',k:'#f0883e55',rx:8});
+    h+=st(W/2,ey+18,'C has n² cells,  each requiring n multiplications',{s:11,f:'#f0883e',ff:'Consolas,monospace'});
+    h+=st(W/2,ey+40,'n²  ×  n  =  n³  total multiplications  →  O(n³)',{s:14,w:'bold',f:'#e6edf3',ff:'Consolas,monospace'});
+  }
+
+  if(step===0)h+=st(W/2,H/2,'Press Step or Play to begin',{s:12,f:'#3a4050'});
+  return mksvg(h,W,H);
+}
+
+// ── Slide 1: Naive 2×2 — 8 Multiplications ──
+function rSlide1(step){
+  const W=800,H=480;let h='';
+  h+=st(W/2,26,'Naive 2×2: Exactly 8 Multiplications',{s:16,w:'bold'});
+  h+=st(W/2,44,'The standard formula for multiplying two 2×2 matrices',{s:10,f:'#8b949e'});
+
+  const cs=64,n=2,mw=n*cs; // mw=128
+  const ax=44,bx=ax+mw+70,cx=bx+mw+70,matY=82;
+  // ax=44, bx=242, cx=440. Right edge=568 ✓
+
+  const aL=[['a','b'],['c','d']];
+  const bL=[['e','f'],['g','h']];
+
+  // Per-formula: which A row, B col, C cell, and color
+  const fmls=[
+    {label:'C₁₁',color:'#3fb950',full:'C₁₁ = ae + bg', rowA:0,colB:0,cell:[0,0]},
+    {label:'C₁₂',color:'#bc8cff',full:'C₁₂ = af + bh', rowA:0,colB:1,cell:[0,1]},
+    {label:'C₂₁',color:'#e3b341',full:'C₂₁ = ce + dg', rowA:1,colB:0,cell:[1,0]},
+    {label:'C₂₂',color:'#39c5cf',full:'C₂₂ = cf + dh', rowA:1,colB:1,cell:[1,1]},
+  ];
+  const fi=step>=2?Math.min(step-2,3):-1;
+  const cf=fi>=0?fmls[fi]:null;
+
+  if(step>=1){
+    // A: highlight current row
+    const hlA=cf?[{cells:[[cf.rowA,0],[cf.rowA,1]],color:cf.color}]:[];
+    h+=drawMatSVG(ax,matY,n,cs,null,hlA);
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+      h+=st(ax+c*cs+cs/2,matY+r*cs+cs/2+5,aL[r][c],
+        {s:18,f:(cf&&r===cf.rowA)?cf.color:'#58a6ff',ff:'Consolas,monospace'});
+    }
+    h+=st(ax+mw/2,matY-14,'A',{s:12,w:'bold',f:'#8b949e'});
+    h+=st(ax+mw+22,matY+mw/2+6,'×',{s:22,f:'#484f58'});
+
+    // B: highlight current col
+    const hlB=cf?[{cells:[[0,cf.colB],[1,cf.colB]],color:cf.color}]:[];
+    h+=drawMatSVG(bx,matY,n,cs,null,hlB);
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+      h+=st(bx+c*cs+cs/2,matY+r*cs+cs/2+5,bL[r][c],
+        {s:18,f:(cf&&c===cf.colB)?cf.color:'#f0883e',ff:'Consolas,monospace'});
+    }
+    h+=st(bx+mw/2,matY-14,'B',{s:12,w:'bold',f:'#8b949e'});
+    h+=st(bx+mw+22,matY+mw/2+6,'=',{s:22,f:'#484f58'});
+
+    // C: highlight active cell with full color, past cells with dim color
+    const hlC=cf?[{cells:[cf.cell],color:cf.color}]:[];
+    h+=drawMatSVG(cx,matY,n,cs,null,hlC);
+    h+=st(cx+mw/2,matY-14,'C',{s:12,w:'bold',f:'#8b949e'});
+    for(let i=0;i<4;i++){
+      const f=fmls[i],revealed=i<=fi,active=i===fi;
+      const [r,c]=f.cell;
+      h+=st(cx+c*cs+cs/2,matY+r*cs+cs/2+5,revealed?f.label:'·',
+        {s:revealed?11:13,f:revealed?(active?f.color:f.color+'88'):'#2d3646',ff:'Consolas,monospace'});
+    }
+  }
+
+  // Formula boxes: 2×2 grid below the matrices
+  const lx=50,rx=420,fyArr=[228,288];
+  fmls.forEach((f,i)=>{
+    if(i+2>step)return;
+    const bx2=i%2===0?lx:rx,fy2=fyArr[Math.floor(i/2)];
+    const active=i===fi;
+    h+=sr(bx2,fy2,330,52,{f:f.color+(active?'18':'0c'),k:f.color+(active?'99':'44'),rx:6,sw:active?1.5:1});
+    h+=st(bx2+14,fy2+20,f.full,{s:13,f:f.color,ff:'Consolas,monospace',a:'start'});
+    h+=st(bx2+14,fy2+38,'← 2 multiplications',{s:9,f:'#484f58',a:'start'});
+  });
+
+  // Summary
+  if(step>=6){
+    h+=sr(20,356,760,56,{f:'#f0883e10',k:'#f0883e55',rx:8});
+    h+=st(W/2,376,'Total: 4 entries × 2 mults each  =  8 multiplications',{s:12,f:'#f0883e',ff:'Consolas,monospace'});
+    h+=st(W/2,397,'T(n) = 8·T(n/2) + O(n²)   →   O(n³)',{s:13,w:'bold',f:'#e6edf3',ff:'Consolas,monospace'});
+  }
+
+  if(step===0)h+=st(W/2,230,'Press Step or Play to reveal',{s:12,f:'#3a4050'});
+  return mksvg(h,W,H);
+}
+
+// ── Slide 2: Strassen's Key Insight ──
+function rSlide2(step){
+  const W=800,H=340;let h='';
+  h+=st(W/2,26,"Strassen's Key Insight",{s:17,w:'bold'});
+
+  if(step>=1){
+    h+=sr(40,48,340,80,{f:'#f0883e0e',k:'#f0883e44',rx:8});
+    h+=st(210,70,'Naive Recursion',{s:12,w:'bold',f:'#f0883e'});
+    h+=st(210,90,'T(n) = 8·T(n/2) + O(n²)',{s:12,f:'#f0883e',ff:'Consolas,monospace'});
+    h+=st(210,110,'→  O(n^log₂8)  =  O(n³)',{s:11,f:'#8b949e',ff:'Consolas,monospace'});
+  }
+  if(step>=2){
+    h+=sr(420,48,340,80,{f:'#58a6ff0e',k:'#58a6ff55',rx:8});
+    h+=st(590,70,"Strassen's Recursion",{s:12,w:'bold',f:'#58a6ff'});
+    h+=st(590,90,'T(n) = 7·T(n/2) + O(n²)',{s:12,f:'#58a6ff',ff:'Consolas,monospace'});
+    h+=st(590,110,'→  O(n^log₂7)  ≈  O(n²·⁸⁰⁷)',{s:11,f:'#3fb950',ff:'Consolas,monospace'});
+  }
+  if(step>=3){
+    h+=sr(200,148,400,56,{f:'#3fb95014',k:'#3fb95066',rx:8});
+    h+=st(W/2,170,'log₂8 = 3.000    vs    log₂7 ≈ 2.807',{s:13,w:'bold',f:'#e6edf3',ff:'Consolas,monospace'});
+    h+=st(W/2,192,'Each level of recursion: 7 subproblems instead of 8',{s:10,f:'#8b949e',ff:'Consolas,monospace'});
+  }
+  if(step>=4){
+    // Visual: recursion tree comparison (2 levels deep)
+    const draw=(startX,n,col,label)=>{
+      const nodeW=34,nodeH=24,levelH=52;
+      // Root
+      h+=sr(startX-nodeW/2,220,nodeW,nodeH,{f:col+'18',k:col,rx:4,sw:1});
+      h+=st(startX,235,'n×n',{s:8,f:col,ff:'Consolas,monospace'});
+      h+=st(startX,218,label,{s:9,f:'#8b949e'});
+      // Level 1: n branches
+      const spread=(n-1)*22;
+      for(let i=0;i<n;i++){
+        const cx2=startX-spread/2+i*22;
+        h+=`<line x1="${startX}" y1="${220+nodeH}" x2="${cx2}" y2="${220+levelH}" stroke="${col}" stroke-width=".8" opacity=".5"/>`;
+        h+=sr(cx2-10,220+levelH,20,16,{f:col+'18',k:col+'88',rx:3,sw:1});
+      }
+      h+=st(startX,220+levelH+10+18,`${n} subproblems`,{s:8,f:col+'bb'});
+      h+=st(startX,220+levelH+10+30,`of size n/2`,{s:8,f:'#484f58',ff:'Consolas,monospace'});
+    };
+    draw(190,8,'#f0883e','8T(n/2)');
+    draw(590,7,'#58a6ff','7T(n/2)');
+    h+=st(W/2,315,'Saving one recursive call per level → O(n^2.807) instead of O(n³)',{s:10,f:'#3fb950',ff:'Consolas,monospace'});
+  }
+  if(step===0)h+=st(W/2,H/2,'Press Step or Play to begin',{s:12,f:'#3a4050'});
+  return mksvg(h,W,H);
+}
+
+// ── Slide 3: The 7 Formulas ──
+function rSlide3(step){
+  const W=800,H=440;let h='';
+  h+=st(W/2,24,'The 7 Subproducts  P₁ – P₇',{s:17,w:'bold'});
+  h+=st(W/2,42,'Each Pᵢ uses exactly one multiplication. Together they reconstruct all four output quadrants.',{s:10,f:'#8b949e'});
+
+  // P formulas (reveal one by one)
+  const pdata=[
+    {sym:'P₁ = (A₁₁+A₂₂)(B₁₁+B₂₂)', note:'Uses diagonal blocks of both matrices'},
+    {sym:'P₂ = (A₂₁+A₂₂)·B₁₁',       note:'Left column of C₂x'},
+    {sym:'P₃ = A₁₁·(B₁₂−B₂₂)',        note:'Right column of C₁x'},
+    {sym:'P₄ = A₂₂·(B₂₁−B₁₁)',        note:'Diagonal correction'},
+    {sym:'P₅ = (A₁₁+A₁₂)·B₂₂',        note:'Top row of C'},
+    {sym:'P₆ = (A₂₁−A₁₁)·(B₁₁+B₁₂)', note:'Bottom-right quadrant'},
+    {sym:'P₇ = (A₁₂−A₂₂)·(B₂₁+B₂₂)', note:'Top-left quadrant'},
+  ];
+  // Two columns of P formulas
+  pdata.forEach((p,i)=>{
+    if(i>=step)return;
+    const col=i<4?40:440;
+    const row=i<4?i:i-4;
+    const y=58+row*62;
+    const bw2=340;
+    h+=sr(col,y,bw2,50,{f:PC[i]+'0e',k:PC[i]+'55',rx:7});
+    h+=st(col+12,y+20,p.sym,{s:12,f:PC[i],ff:'Consolas,monospace',a:'start'});
+    h+=st(col+12,y+36,p.note,{s:9,f:'#484f58',a:'start'});
+  });
+
+  // C reconstruction
+  if(step>=8){
+    const recon=[
+      {f:'C₁₁ = P₁ + P₄ − P₅ + P₇', ps:[0,3,4,6]},
+      {f:'C₁₂ = P₃ + P₅',             ps:[2,4]},
+      {f:'C₂₁ = P₂ + P₄',             ps:[1,3]},
+      {f:'C₂₂ = P₁ − P₂ + P₃ + P₆',  ps:[0,1,2,5]},
+    ];
+    const ry=58+4*62-4;
+    h+=sr(40,ry,720,96,{f:'#0c1a0f',k:'#238636',rx:8});
+    h+=st(W/2,ry+16,'Reconstruct C from P₁–P₇ (only additions/subtractions):',{s:10.5,w:'bold',f:'#3fb950'});
+    recon.forEach((r2,i)=>{
+      const rx2=i%2===0?52:420,ry2=ry+30+Math.floor(i/2)*32;
+      const colored=r2.ps.reduce((s,pi)=>s+`<tspan fill="${PC[pi]}">${PL[pi]}</tspan>`,'')||'';
+      h+=st(rx2,ry2+14,r2.f.split('=')[0].trim()+' = ',{s:11,f:'#8b949e',ff:'Consolas,monospace',a:'start'});
+      // Just show plain text for simplicity
+      h+=st(rx2+90,ry2+14,r2.f.split('=')[1].trim(),{s:11,f:'#3fb950',ff:'Consolas,monospace',a:'start'});
+    });
+  }
+  if(step===0)h+=st(W/2,H/2,'Press Step or Play to reveal P₁ through P₇',{s:12,f:'#3a4050'});
+  return mksvg(h,W,H);
+}
+
+// ── Slide 4: Divide and Conquer ──
+function rSlide4(step){
+  const W=900,H=490;let h=DEFS;
+  h+=st(W/2,26,'Divide and Conquer: From 4×4 to Scalar',{s:16,w:'bold'});
+  h+=st(W/2,44,'Partitioning recurses two levels deep — 4×4 → 2×2 → scalar multiplications',{s:9.5,f:'#8b949e'});
+
+  const cs=36,n=4,mw=n*cs; // mw=144
+  const ax=80,bx=ax+mw+52,matY=82;
+  // ax=80, bx=276. matY-14=68 is above subtitle (y=44) by 24px ✓
+
+  if(step>=1){
+    h+=drawMatSVG(ax,matY,n,cs,null,[],step>=2);
+    h+=st(ax+mw/2,matY-14,'A  (n×n)',{s:11,f:'#8b949e'});
+    h+=drawMatSVG(bx,matY,n,cs,null,[],step>=3);
+    h+=st(bx+mw/2,matY-14,'B  (n×n)',{s:11,f:'#8b949e'});
+  }
+
+  // Quadrant labels on A
+  if(step>=2){
+    const qC=[['#58a6ff','#f0883e'],['#3fb950','#f85149']];
+    const qL=[['A₁₁','A₁₂'],['A₂₁','A₂₂']];
+    for(let qr=0;qr<2;qr++)for(let qc=0;qc<2;qc++){
+      h+=st(ax+qc*2*cs+cs,matY+qr*2*cs+cs+4,qL[qr][qc],{s:10,f:qC[qr][qc],ff:'Consolas,monospace'});
+    }
+  }
+
+  // Quadrant labels on B
+  if(step>=3){
+    const qC=[['#58a6ff','#f0883e'],['#3fb950','#f85149']];
+    const qL=[['B₁₁','B₁₂'],['B₂₁','B₂₂']];
+    for(let qr=0;qr<2;qr++)for(let qc=0;qc<2;qc++){
+      h+=st(bx+qc*2*cs+cs,matY+qr*2*cs+cs+4,qL[qr][qc],{s:10,f:qC[qr][qc],ff:'Consolas,monospace'});
+    }
+  }
+
+  // Recursion tree — 2 levels deep
+  const treeY=matY+mw+30; // =82+144+30=256
+  const rootX=W/2,rootW=54,rootH=24;
+
+  if(step>=4){
+    // Root: 4×4
+    h+=sr(rootX-rootW/2,treeY,rootW,rootH,{f:'#58a6ff18',k:'#58a6ff',rx:5});
+    h+=st(rootX,treeY+16,'4×4',{s:10,f:'#58a6ff',ff:'Consolas,monospace'});
+    h+=st(rootX,treeY-8,'7 subproblems',{s:8,f:'#484f58'});
+
+    // M₁–M₇ level-1 nodes
+    const mxs=[80,210,330,450,570,690,820];
+    const nodeY=treeY+56,nodeW=48,nodeH=22;
+    mxs.forEach((mx,i)=>{
+      const col=PC[i];
+      h+=`<line x1="${rootX}" y1="${treeY+rootH}" x2="${mx}" y2="${nodeY}" stroke="${col}" stroke-width="1.2" opacity=".5"/>`;
+      h+=sr(mx-nodeW/2,nodeY,nodeW,nodeH,{f:col+'18',k:col,rx:4,sw:1.2});
+      h+=st(mx,nodeY+14,`M${i+1}`,{s:10,w:'bold',f:col,ff:'Consolas,monospace'});
+      h+=st(mx,nodeY-7,'2×2',{s:7.5,f:col+'88',ff:'Consolas,monospace'});
+    });
+  }
+
+  // Level 2: expand M₁ into 7 scalar leaves; others show ×7
+  if(step>=5){
+    const mxs=[80,210,330,450,570,690,820];
+    const nodeY=treeY+56,nodeH=22;
+    const leafY=treeY+110,leafW=13,leafH=13;
+    mxs.forEach((mx,i)=>{
+      const col=PC[i];
+      if(i===0){
+        // M₁ fully expanded: 7 scalar leaves with inner Pi colors
+        for(let j=0;j<7;j++){
+          const lx=mx-42+j*14;
+          const lc=PC[j];
+          h+=`<line x1="${mx}" y1="${nodeY+nodeH}" x2="${lx+leafW/2}" y2="${leafY}" stroke="${lc}" stroke-width=".9" opacity=".7"/>`;
+          h+=sr(lx,leafY,leafW,leafH,{f:lc+'28',k:lc,rx:2,sw:.8});
+          h+=st(lx+leafW/2,leafY+9,'×',{s:7,f:lc,ff:'Consolas,monospace'});
+        }
+        h+=st(mx,leafY+leafH+12,'P₁–P₇',{s:7.5,f:'#8b949e'});
+        h+=st(mx,leafY+leafH+22,'7 scalars',{s:7,f:col+'bb'});
+      } else {
+        // Collapsed: dashed line + ×7 box
+        h+=`<line x1="${mx}" y1="${nodeY+nodeH}" x2="${mx}" y2="${leafY}" stroke="${col}" stroke-width=".8" opacity=".3" stroke-dasharray="3,3"/>`;
+        h+=sr(mx-20,leafY,40,leafH,{f:col+'12',k:col+'55',rx:3,sw:.7});
+        h+=st(mx,leafY+9,'×7',{s:8,f:col+'88',ff:'Consolas,monospace'});
+        h+=st(mx,leafY+leafH+14,'scalars',{s:6.5,f:'#3a4050'});
+      }
+    });
+
+    const ty=treeY+152;
+    h+=sr(40,ty,W-80,46,{f:'#3fb95010',k:'#3fb95066',rx:8});
+    h+=st(W/2,ty+16,'Each Mᵢ is a full 2×2 Strassen → 7 scalar multiplications at the leaves',{s:10,f:'#8b949e'});
+    h+=st(W/2,ty+34,'Total for 4×4:  7 × 7 = 49 mults   (Naive: 4³ = 64)',{s:13,w:'bold',f:'#3fb950',ff:'Consolas,monospace'});
+  }
+
+  if(step===0)h+=st(W/2,H/2,'Press Step or Play to begin',{s:12,f:'#3a4050'});
+  return mksvg(h,W,H);
+}
+
+// ── Slide 5: Complexity Analysis ──
+function rSlide5(step){
+  const W=800,H=400;let h='';
+  h+=st(W/2,26,'Complexity Analysis',{s:17,w:'bold'});
+  h+=st(W/2,44,'Applying the Master Theorem to both recurrences',{s:10,f:'#8b949e'});
+
+  if(step>=1){
+    // Naive side
+    h+=sr(30,58,360,100,{f:'#f0883e0a',k:'#f0883e44',rx:8});
+    h+=st(210,78,'Naive Divide & Conquer',{s:12,w:'bold',f:'#f0883e'});
+    h+=st(210,98,'T(n) = 8·T(n/2) + O(n²)',{s:12,f:'#e6edf3',ff:'Consolas,monospace'});
+    h+=st(210,116,'a=8, b=2,  n^log_b(a) = n^log₂8 = n³',{s:10,f:'#8b949e',ff:'Consolas,monospace'});
+    h+=st(210,134,'n² ≤ n³  →  Case 1 of Master Thm',{s:10,f:'#484f58',ff:'Consolas,monospace'});
+    h+=st(210,152,'→  T(n) = O(n³)',{s:12,w:'bold',f:'#f0883e',ff:'Consolas,monospace'});
+  }
+  if(step>=2){
+    // Strassen side
+    h+=sr(410,58,360,100,{f:'#58a6ff0a',k:'#58a6ff44',rx:8});
+    h+=st(590,78,"Strassen",{s:12,w:'bold',f:'#58a6ff'});
+    h+=st(590,98,'T(n) = 7·T(n/2) + O(n²)',{s:12,f:'#e6edf3',ff:'Consolas,monospace'});
+    h+=st(590,116,'a=7, b=2,  n^log_b(a) = n^log₂7 ≈ n²·⁸⁰⁷',{s:10,f:'#8b949e',ff:'Consolas,monospace'});
+    h+=st(590,134,'n² ≤ n²·⁸⁰⁷  →  Case 1 of Master Thm',{s:10,f:'#484f58',ff:'Consolas,monospace'});
+    h+=st(590,152,'→  T(n) = O(n²·⁸⁰⁷)',{s:12,w:'bold',f:'#58a6ff',ff:'Consolas,monospace'});
+  }
+  if(step>=3){
+    // Side-by-side recursion level diagram
+    h+=st(W/2,180,'At depth k, the number of active subproblems:',{s:11,f:'#8b949e'});
+    const depths=[0,1,2,3];
+    const colN='#f0883e',colS='#58a6ff';
+    const startX=100,endX=700;
+    depths.forEach((k,ki)=>{
+      const y=202+ki*36;
+      const nv=Math.pow(8,k),sv=Math.pow(7,k);
+      const size=`n/${Math.pow(2,k)}`;
+      h+=st(startX-16,y+12,`k=${k}:`,{s:9.5,f:'#484f58',ff:'Consolas,monospace',a:'end'});
+      // Naive blocks
+      const nDots=Math.min(nv,16);
+      for(let i=0;i<nDots;i++){
+        h+=sr(startX+i*14+(nv>8?0:0),y,12,22,{f:colN+'22',k:colN+'66',rx:2,sw:1});
+      }
+      if(nv>16)h+=st(startX+16*14+4,y+14,'…',{s:10,f:colN});
+      h+=st(startX+16*14+28,y+14,`${nv}`,{s:9,f:colN,ff:'Consolas,monospace'});
+      // Strassen blocks
+      const sDots=Math.min(sv,16);
+      for(let i=0;i<sDots;i++){
+        h+=sr(endX-sDots*14+i*14-20,y,12,22,{f:colS+'22',k:colS+'66',rx:2,sw:1});
+      }
+      if(sv>16)h+=st(endX-16*14-28,y+14,'…',{s:10,f:colS});
+      h+=st(endX-16*14-46,y+14,`${sv}`,{s:9,f:colS,ff:'Consolas,monospace'});
+    });
+    h+=st(startX+110,348,'Naive (8ᵏ)',{s:9,f:colN});
+    h+=st(endX-130,348,'Strassen (7ᵏ)',{s:9,f:colS});
+  }
+  if(step>=4){
+    h+=sr(30,362,740,32,{f:'#3fb95010',k:'#3fb95066',rx:7});
+    h+=st(W/2,381,'log₂7 ≈ 2.807 < 3 = log₂8  →  Strassen reduces the asymptotic exponent by 0.193',{s:11,w:'bold',f:'#3fb950',ff:'Consolas,monospace'});
+  }
+  if(step===0)h+=st(W/2,220,'Press Step or Play to begin',{s:12,f:'#3a4050'});
+  return mksvg(h,W,H);
+}
+
+// ── Slide 6: The Complete Picture (static) ──
+function rSlide6(){
+  const W=820,H=360;let h=DEFS;
+  h+=st(W/2,24,'The Complete Picture',{s:17,w:'bold'});
+
+  // Flow diagram
+  const bh=52,gap=18;
+  const boxes=[
+    {x:20, w:100, label:'Input',      sub:'A, B  (n×n)', col:'#30363d', fc:'#8b949e'},
+    {x:140,w:130, label:'Partition',  sub:'4 quadrants each', col:'#58a6ff', fc:'#58a6ff'},
+    {x:290,w:160, label:'7 Strassen', sub:'P₁–P₇ (recursive)', col:'#3fb950', fc:'#3fb950'},
+    {x:470,w:140, label:'Combine',    sub:'C₁₁ C₁₂ C₂₁ C₂₂', col:'#bc8cff', fc:'#bc8cff'},
+    {x:630,w:110, label:'Result',     sub:'C = A × B', col:'#3fb950', fc:'#3fb950'},
+  ];
+  const by=90;
+  boxes.forEach((b,i)=>{
+    h+=sr(b.x,by,b.w,bh,{f:b.col+'0e',k:b.col,rx:8});
+    h+=st(b.x+b.w/2,by+20,b.label,{s:12,w:'bold',f:b.fc});
+    h+=st(b.x+b.w/2,by+36,b.sub,{s:9,f:'#484f58'});
+    if(i<boxes.length-1){
+      const ax=b.x+b.w+2,ay=by+bh/2;
+      h+=`<line x1="${ax}" y1="${ay}" x2="${b.x+b.w+gap-2}" y2="${ay}" stroke="#484f58" stroke-width="1.5" marker-end="url(#am)"/>`;
+    }
+  });
+
+  // Key stats box — full width
+  h+=sr(20,166,760,80,{f:'#0a0e13',k:'#30363d',rx:8});
+  h+=st(40,184,'Algorithm Complexity',{s:11,w:'bold',f:'#8b949e',a:'start'});
+  h+=st(40,202,'Naive:    O(n³)          (log₂8 = 3.000)',{s:10,f:'#f0883e',ff:'Consolas,monospace',a:'start'});
+  h+=st(40,218,'Strassen: O(n²·⁸⁰⁷)    (log₂7 ≈ 2.807)',{s:10,f:'#58a6ff',ff:'Consolas,monospace',a:'start'});
+  h+=st(40,234,'Best known: O(n²·³⁷³)  (Coppersmith–Winograd)',{s:9.5,f:'#484f58',ff:'Consolas,monospace',a:'start'});
+
+  // Practical notes — two columns, left=limitations, right=performance+pointer
+  h+=sr(20,262,760,80,{f:'#0a0e13',k:'#30363d',rx:8});
+  h+=st(42,280,'Practical Considerations',{s:11,w:'bold',f:'#8b949e',a:'start'});
+  h+=st(42,298,'• Padding needed for non-power-of-2 matrix dimensions',{s:9.5,f:'#8b949e',a:'start'});
+  h+=st(42,314,'• Numerically less stable than naive for floating-point inputs',{s:9.5,f:'#8b949e',a:'start'});
+  h+=st(42,330,'• P₁–P₇ are all independent → can be fully parallelized',{s:9.5,f:'#3fb950',a:'start'});
+  h+=st(430,280,'Performance',{s:11,w:'bold',f:'#8b949e',a:'start'});
+  h+=st(430,298,'• Faster than naive in practice for n ≳ 64–128',{s:9.5,f:'#8b949e',a:'start'});
+  h+=st(430,314,'• Best known: O(n²·³⁷³)  Coppersmith–Winograd',{s:9.5,f:'#8b949e',a:'start'});
+  h+=st(430,330,'• Open the Visualize tab to try it on your own matrices →',{s:9.5,f:'#58a6ff',a:'start'});
+
+  return mksvg(h,W,H);
+}
+
+// ═══════════════════════════════════════════════
+// SLIDES + EXPLANATIONS
+// ═══════════════════════════════════════════════
+const SLIDES=[
+  {title:'The Multiplication Problem',           n:5, render:rSlide0},
+  {title:'Naive 2×2: Exactly 8 Multiplications', n:6, render:rSlide1},
+  {title:"Strassen's Key Insight",               n:4, render:rSlide2},
+  {title:'The 7 Formulas: P₁–P₇',               n:8, render:rSlide3},
+  {title:'Divide and Conquer',                   n:5, render:rSlide4},
+  {title:'Complexity Analysis',                  n:4, render:rSlide5},
+  {title:'The Complete Picture',                 n:0, render:rSlide6},
+];
+
+const EXPL=[
+  // 0
+  `<p>Standard matrix multiplication computes each entry C[i][j] as the <strong>dot product</strong> of the i-th row of A with the j-th column of B. That requires <em>n</em> multiplications and n−1 additions per entry.</p>
+  <p>Since C has n² entries, the total cost is <strong>n³ multiplications</strong> and n²(n−1) additions — asymptotically O(n³). For n=1000 this is already 10⁹ multiplications.</p>
+  <p>Even if we use the recursive divide-and-conquer approach — splitting each matrix into four n/2×n/2 blocks — we still need <strong>8 recursive calls</strong>, giving T(n) = 8T(n/2) + O(n²), which solves to O(n³).</p>
+  <p>The question Strassen asked in 1969: <em>can we solve the 2×2 case with fewer than 8 multiplications?</em></p>`,
+  // 1
+  `<p>For two 2×2 matrices, the standard formula computes each output cell as a dot product of one row and one column: <em>c₁₁ = ae + bg</em>, and similarly for the other three cells.</p>
+  <p>This uses <strong>2 multiplications per output cell × 4 cells = 8 multiplications total</strong>, plus 4 additions. If we recurse on this structure, we get the O(n³) complexity.</p>
+  <p>The key observation: multiplications are not free, and there is no obvious way to eliminate any of the 8. The entries of C seem to require all of them. But appearances can be deceiving.</p>
+  <div class="formula">T(n) = 8·T(n/2) + O(n²)  →  O(n^log₂8) = O(n³)</div>`,
+  // 2
+  `<p>Strassen's 1969 breakthrough: you can compute the product of two 2×2 matrices using only <strong>7 multiplications</strong> (instead of 8) — at the cost of 18 additions/subtractions instead of 4.</p>
+  <p>This trade-off — fewer multiplications, more additions — seems unhelpful at first. But when applied recursively to n×n matrices, the savings compound across <em>log₂n</em> levels. The exponent changes from log₂8=3 to log₂7≈2.807.</p>
+  <p>The difference of 0.193 in the exponent seems small, but at n=10⁶ it means 10¹⁸ vs 10¹⁶·⁸⁴ — a factor of ~150 fewer multiplications.</p>
+  <div class="formula">T(n) = 7·T(n/2) + O(n²)  →  O(n^log₂7) ≈ O(n^2.807)</div>`,
+  // 3
+  `<p>The 7 subproducts P₁–P₇ are the heart of the algorithm. Each one is a single scalar multiplication (for 2×2 base case) or a recursive Strassen call (for larger matrices).</p>
+  <p>The formulas look arbitrary, but they are carefully chosen so that <strong>each output quadrant can be expressed as a short sum of Pᵢ values</strong> — using only additions and subtractions in the reconstruction step.</p>
+  <p>Reconstruction: C₁₁ = P₁+P₄−P₅+P₇, C₁₂ = P₃+P₅, C₂₁ = P₂+P₄, C₂₂ = P₁−P₂+P₃+P₆. You can verify each formula by substituting the Pᵢ definitions — it always equals the naive formula.</p>
+  <div class="formula">7 multiplications  +  18 additions  =  25 total ops  (vs naive: 8 mult + 4 add = 12)</div>`,
+  // 4
+  `<p>To apply Strassen to an n×n matrix (where n is a power of 2), partition A and B each into four equal n/2 × n/2 submatrices. Then apply Strassen's 7-multiplication formula at the <em>block matrix level</em>.</p>
+  <p>Each Pᵢ becomes a recursive call on n/2 × n/2 matrices, which in turn partitions into four n/4 × n/4 blocks, and so on. The recursion tree has <strong>log₂n levels</strong> with 7 branches at each node.</p>
+  <p>At the leaves (1×1 matrices), the recursion bottoms out with a single scalar multiplication. The total scalar multiplication count is 7^(log₂n) = n^(log₂7) ≈ n²·⁸⁰⁷.</p>
+  <div class="formula">For 4×4: 7 × 7 = 49 mults  (naive: 64).  For 8×8: 7³ = 343  (naive: 512).</div>`,
+  // 5
+  `<p>Both recurrences fit the Master Theorem: T(n) = aT(n/b) + f(n). For Strassen, a=7, b=2, f(n)=O(n²). Since n^log_b(a) = n^log₂7 ≈ n²·⁸⁰⁷ > n², we are in Case 1 — <strong>T(n) = O(n^log₂7)</strong>.</p>
+  <p>For the naive recursion: a=8, b=2, n^log₂8 = n³ > n², Case 1 again — T(n) = O(n³). The difference between the two is entirely in the branching factor (7 vs 8).</p>
+  <p>The recursion tree analysis confirms this: at depth k there are 7ᵏ vs 8ᵏ subproblems. At k=log₂n the difference accumulates to n^log₂7 vs n^log₂8 = n³.</p>
+  <div class="formula">n^2.807 / n³ = n^(−0.193) → 0 as n→∞  (Strassen wins asymptotically)</div>`,
+  // 6
+  `<p>Strassen's algorithm was the first to break the O(n³) barrier in 1969. It showed that matrix multiplication is <em>not inherently cubic</em> — a profound insight that launched decades of research into fast matrix algorithms.</p>
+  <p>In practice, Strassen is only faster for <strong>n ≳ 64–128</strong>, because the 18 additions per level add constant-factor overhead and hurt cache performance compared to the simple, cache-friendly naive algorithm.</p>
+  <p>The best known algorithm today is based on Coppersmith-Winograd (1990) and its improvements, achieving O(n²·³⁷³). However, Strassen remains the algorithm of choice in practice (used in BLAS libraries) when n is large enough.</p>
+  <p>Switch to the <strong>Visualizer</strong> to step through Strassen's algorithm on 2×2 or 4×4 matrices with real numbers.</p>`,
+];
+
+// ═══════════════════════════════════════════════
+// SCREEN NAVIGATION
+// ═══════════════════════════════════════════════
+function goHome(){
+  stopA();stopS();A.mode='home';
+  document.getElementById('homeScreen').classList.add('active');
+  document.getElementById('learnScreen').classList.remove('active');
+  document.getElementById('solveScreen').classList.remove('active');
+  document.getElementById('topBar').classList.remove('vis');
+  document.getElementById('slideNav').classList.remove('vis');
+}
+function goLearn(){
+  A.mode='learn';
+  document.getElementById('homeScreen').classList.remove('active');
+  document.getElementById('learnScreen').classList.add('active');
+  document.getElementById('solveScreen').classList.remove('active');
+  document.getElementById('topBar').classList.add('vis');
+  document.getElementById('slideNav').classList.add('vis');
+  initDots();setSlide(0);
+}
+function goSolve(){
+  A.mode='solve';
+  document.getElementById('homeScreen').classList.remove('active');
+  document.getElementById('learnScreen').classList.remove('active');
+  document.getElementById('solveScreen').classList.add('active');
+  document.getElementById('topBar').classList.add('vis');
+  document.getElementById('slideNav').classList.remove('vis');
+  document.getElementById('topTitle').textContent='Algorithm Visualizer';
+  initPseudo();initLegend();initCrossover(4);
+  buildMatInputs(A.matSize);buildPresets(A.matSize);
+}
+
+// ═══════════════════════════════════════════════
+// SLIDE ENGINE
+// ═══════════════════════════════════════════════
+function initDots(){
+  document.getElementById('slideDots').innerHTML=
+    SLIDES.map((_,i)=>`<div class="dot" id="dot${i}" onclick="setSlide(${i})"></div>`).join('');
+}
+function setSlide(n){
+  stopA();A.sl=n;A.aStep=0;
+  const sl=SLIDES[n];
+  document.getElementById('topTitle').textContent=`${n+1} / ${SLIDES.length}  ·  ${sl.title}`;
+  document.getElementById('explTitle').textContent=sl.title;
+  document.getElementById('explBody').innerHTML=EXPL[n]||'';
+  SLIDES.forEach((_,i)=>{const d=document.getElementById('dot'+i);if(d)d.classList.toggle('on',i===n);});
+  document.getElementById('prevBtn').disabled=n===0;
+  document.getElementById('nextBtn').disabled=n===SLIDES.length-1;
+  document.getElementById('nextBtn').textContent=n===SLIDES.length-1?'Done ✓':'Next →';
+  const ac=document.getElementById('animCtrl');
+  sl.n>0?ac.classList.add('vis'):ac.classList.remove('vis');
+  renderSlide();updateACtrl();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function renderSlide(){document.getElementById('slideVis').innerHTML=SLIDES[A.sl].render(A.aStep);}
+function updateACtrl(){
+  const sl=SLIDES[A.sl];
+  document.getElementById('abPrev').disabled=A.aStep===0;
+  document.getElementById('abStep').disabled=A.aStep>=sl.n;
+  document.getElementById('abPlay').textContent=A.aPlay?'⏸ Pause':'▶ Play';
+  document.getElementById('aCount').textContent=`${A.aStep} / ${sl.n}`;
+}
+function aStepBack(){stopA();if(A.aStep>0){A.aStep--;renderSlide();updateACtrl();}}
+function aStepFwd(){if(A.aStep<SLIDES[A.sl].n){A.aStep++;renderSlide();updateACtrl();}}
+function aToggle(){
+  if(A.aPlay){stopA();updateACtrl();return;}
+  A.aPlay=true;updateACtrl();
+  A.aTimer=setInterval(()=>{
+    if(A.aStep>=SLIDES[A.sl].n){stopA();updateACtrl();return;}
+    A.aStep++;renderSlide();updateACtrl();
+  },820);
+}
+function stopA(){if(A.aTimer){clearInterval(A.aTimer);A.aTimer=null;}A.aPlay=false;}
+function prevSlide(){if(A.sl>0)setSlide(A.sl-1);}
+function nextSlide(){if(A.sl<SLIDES.length-1)setSlide(A.sl+1);}
+
+// ═══════════════════════════════════════════════
+// PSEUDOCODE
+// ═══════════════════════════════════════════════
+const PS=[
+  {c:'<span class="kw">function</span> Strassen(A, B, n):',                   t:'Recursively multiply two n×n matrices.'},
+  {c:'&nbsp;&nbsp;<span class="kw">if</span> n = 1: <span class="kw">return</span> [[A[0][0] · B[0][0]]]', t:'Base case: single scalar multiplication.'},
+  {c:'&nbsp;&nbsp;A₁₁,A₁₂,A₂₁,A₂₂ ← Partition(A)',                          t:'Split A into four n/2×n/2 submatrices.'},
+  {c:'&nbsp;&nbsp;B₁₁,B₁₂,B₂₁,B₂₂ ← Partition(B)',                          t:'Split B into four n/2×n/2 submatrices.'},
+  {c:'&nbsp;&nbsp;P₁ ← Strassen(A₁₁+A₂₂, B₁₁+B₂₂, n/2)',                   t:'P₁: uses diagonal blocks of both matrices.'},
+  {c:'&nbsp;&nbsp;P₂ ← Strassen(A₂₁+A₂₂, B₁₁,     n/2)',                   t:'P₂: bottom rows of A, first col of B.'},
+  {c:'&nbsp;&nbsp;P₃ ← Strassen(A₁₁,     B₁₂−B₂₂, n/2)',                   t:'P₃: top-left of A, right col difference of B.'},
+  {c:'&nbsp;&nbsp;P₄ ← Strassen(A₂₂,     B₂₁−B₁₁, n/2)',                   t:'P₄: bottom-right of A, left col difference of B.'},
+  {c:'&nbsp;&nbsp;P₅ ← Strassen(A₁₁+A₁₂, B₂₂,     n/2)',                   t:'P₅: top row of A, bottom-right of B.'},
+  {c:'&nbsp;&nbsp;P₆ ← Strassen(A₂₁−A₁₁, B₁₁+B₁₂, n/2)',                   t:'P₆: left col difference of A, top row of B.'},
+  {c:'&nbsp;&nbsp;P₇ ← Strassen(A₁₂−A₂₂, B₂₁+B₂₂, n/2)',                   t:'P₇: right col difference of A, bottom row of B.'},
+  {c:'&nbsp;&nbsp;C₁₁ ← P₁ + P₄ − P₅ + P₇',                                t:'Assemble top-left quadrant of C.'},
+  {c:'&nbsp;&nbsp;C₁₂ ← P₃ + P₅',                                            t:'Assemble top-right quadrant of C.'},
+  {c:'&nbsp;&nbsp;C₂₁ ← P₂ + P₄',                                            t:'Assemble bottom-left quadrant of C.'},
+  {c:'&nbsp;&nbsp;C₂₂ ← P₁ − P₂ + P₃ + P₆',                                t:'Assemble bottom-right quadrant of C.'},
+  {c:'&nbsp;&nbsp;<span class="kw">return</span> Combine(C₁₁, C₁₂, C₂₁, C₂₂)', t:'Merge quadrants into n×n result matrix.'},
+];
+function initPseudo(){
+  const el=document.getElementById('pseudo');
+  if(el.innerHTML)return;
+  el.innerHTML=PS.map((l,i)=>`<div class="pl" id="ps${i}"><span class="pn">${i+1}</span><span class="pc">${l.c}</span><span class="ptip">${l.t}</span></div>`).join('');
+}
+function hlPs(lines){
+  const sy=window.scrollY;
+  PS.forEach((_,i)=>{const e=document.getElementById('ps'+i);if(e)e.classList.toggle('hl',lines.includes(i+1));});
+  window.scrollTo({top:sy,behavior:'instant'});
+}
+
+// ═══════════════════════════════════════════════
+// SOLVER — COMPUTE FUNCTIONS
+// ═══════════════════════════════════════════════
+
+function compute2x2(mA,mB){
+  const steps=[];
+  const[[a,b],[c,d]]=mA,[[e,f],[g,hh]]=mB;
+
+  const pVals=[(a+d)*(e+hh),(c+d)*e,a*(f-hh),d*(g-e),(a+b)*hh,(c-a)*(e+f),(b-d)*(g+hh)];
+  const [P1,P2,P3,P4,P5,P6,P7]=pVals;
+
+  // Build numeric formula strings per P
+  const pEqs=[
+    `(${a}+${d})(${e}+${hh}) = ${a+d}×${e+hh}`,
+    `(${c}+${d})×${e} = ${c+d}×${e}`,
+    `${a}×(${f}−${hh}) = ${a}×${f-hh}`,
+    `${d}×(${g}−${e}) = ${d}×${g-e}`,
+    `(${a}+${b})×${hh} = ${a+b}×${hh}`,
+    `(${c}−${a})×(${e}+${f}) = ${c-a}×${e+f}`,
+    `(${b}−${d})×(${g}+${hh}) = ${b-d}×${g+hh}`,
+  ];
+
+  const nul2=nullMat(2);
+
+  // Init
+  steps.push({type:'init',piVals:Array(7).fill(null),C:nul2,
+    hlA:[],hlB:[],hlC:[],hlColor:'',
+    eq:'Input matrices A and B — click Step to compute P₁ through P₇',
+    expl:`Matrix A:\n[${a}, ${b}]\n[${c}, ${d}]\n\nMatrix B:\n[${e}, ${f}]\n[${g}, ${hh}]\n\nStrassen will compute 7 subproducts P₁–P₇ using only 7 multiplications.`,
+    hl:[1,2],mults:0,label:'Init',phase:'Setup'});
+
+  // P1–P7
+  const cum=Array(7).fill(null);
+  const addCount=[2,1,1,1,1,2,2];
+  let mults=0,adds=0;
+  for(let i=0;i<7;i++){
+    mults++;adds+=addCount[i];
+    cum[i]=pVals[i];
+    steps.push({type:'pi',piIdx:i,piVals:[...cum],C:nul2,
+      hlA:PHL_A2[i],hlB:PHL_B2[i],hlC:[],hlColor:PC[i],
+      eq:`<span style="color:${PC[i]}">${PL[i]} = ${PFORM_SYM[i]}</span> = ${pEqs[i]} = <strong style="color:${PC[i]}">${pVals[i]}</strong>`,
+      expl:`Computing ${PL[i]} = ${PFORM_SYM[i]}\n= ${pEqs[i]} = ${pVals[i]}`,
+      hl:[4+i],mults,label:PL[i],phase:'Multiply'});
+  }
+
+  // Combine
+  const C11=P1+P4-P5+P7,C12=P3+P5,C21=P2+P4,C22=P1-P2+P3+P6;
+  const combineData=[
+    {qi:0,cell:[0,0],val:C11,formula:'C₁₁ = P₁+P₄−P₅+P₇',
+     numStr:`${P1}+${P4}−${P5}+${P7}`,adds:3},
+    {qi:1,cell:[0,1],val:C12,formula:'C₁₂ = P₃+P₅',
+     numStr:`${P3}+${P5}`,adds:1},
+    {qi:2,cell:[1,0],val:C21,formula:'C₂₁ = P₂+P₄',
+     numStr:`${P2}+${P4}`,adds:1},
+    {qi:3,cell:[1,1],val:C22,formula:'C₂₂ = P₁−P₂+P₃+P₆',
+     numStr:`${P1}−${P2}+${P3}+${P6}`,adds:3},
+  ];
+  const cg=[[null,null],[null,null]];
+  for(const ci of combineData){
+    adds+=ci.adds;
+    cg[ci.cell[0]][ci.cell[1]]=ci.val;
+    steps.push({type:'combine',quadIdx:ci.qi,piVals:[...cum],C:cg.map(r=>[...r]),
+      hlA:[],hlB:[],hlC:[ci.cell],hlColor:'#58a6ff',
+      eq:`<span style="color:var(--blue)">${ci.formula}</span> = ${ci.numStr} = <strong>${ci.val}</strong>`,
+      expl:`Assembling ${ci.formula}\n= ${ci.numStr} = ${ci.val}`,
+      hl:[12+ci.qi],mults,label:CFORM_SYM[ci.qi].split('=')[0].trim(),phase:'Combine'});
+  }
+
+  // Result
+  const Cfinal=[[C11,C12],[C21,C22]];
+  steps.push({type:'result',piVals:[...cum],C:Cfinal,
+    hlA:[],hlB:[],hlC:[],hlColor:'#3fb950',
+    eq:`<span style="color:#3fb950">✓ Complete! Strassen: 7 mults &nbsp;·&nbsp; Naive: 8 mults &nbsp;·&nbsp; Saved: 1</span>`,
+    expl:`Result C = A × B\nC₁₁=${C11}, C₁₂=${C12}\nC₂₁=${C21}, C₂₂=${C22}\n\nStrassen used 7 multiplications.\nNaive would use 8 (saved 1 multiplication, ~12.5% reduction).`,
+    hl:[16],mults:7,label:'Done',phase:'Result'});
+
+  return steps;
+}
+
+function compute4x4(mA,mB){
+  const steps=[];
+  const A11=getQ(mA,0,0),A12=getQ(mA,0,1),A21=getQ(mA,1,0),A22=getQ(mA,1,1);
+  const B11=getQ(mB,0,0),B12=getQ(mB,0,1),B21=getQ(mB,1,0),B22=getQ(mB,1,1);
+
+  const Margs=[
+    [addM(A11,A22),addM(B11,B22)],
+    [addM(A21,A22),B11],
+    [A11,subM(B12,B22)],
+    [A22,subM(B21,B11)],
+    [addM(A11,A12),B22],
+    [subM(A21,A11),addM(B11,B12)],
+    [subM(A12,A22),addM(B21,B22)],
+  ];
+  const Mres=Margs.map(([X,Y])=>stras2([X,Y]).C);
+  const[M1,M2,M3,M4,M5,M6,M7]=Mres;
+  const nul4=nullMat(4);
+
+  const mkBase=(extra)=>Object.assign({
+    piVals:Array(7).fill(null),C:nul4,partitioned:false,
+    hlA:[],hlB:[],hlC:[],hlColor:'',
+    mults:0,subA:null,subB:null,innerPVals:null,innerC:null,miIdx:-1
+  },extra);
+
+  steps.push(mkBase({type:'init',partitioned:false,
+    eq:'4×4 input — click Step to begin the recursive decomposition',
+    expl:`Strassen 4×4:\n1. Partition A, B into 2×2 quadrants\n2. Compute M₁–M₇ (each is a full 2×2 Strassen → 7 scalar mults)\n3. Combine M values into C\n\nTotal: 7×7 = 49 scalar mults  (Naive: 64, saved 23%)`,
+    hl:[1],label:'Init',phase:'Setup'}));
+
+  steps.push(mkBase({type:'partition_a',partitioned:'a',hlColor:'#58a6ff',
+    eq:'Partition A → A₁₁, A₁₂, A₂₁, A₂₂',
+    expl:`A₁₁=${JSON.stringify(A11)}\nA₁₂=${JSON.stringify(A12)}\nA₂₁=${JSON.stringify(A21)}\nA₂₂=${JSON.stringify(A22)}`,
+    hl:[3],label:'Partition A',phase:'Setup'}));
+
+  steps.push(mkBase({type:'partition_b',partitioned:'ab',hlColor:'#f0883e',
+    eq:'Partition B → B₁₁, B₁₂, B₂₁, B₂₂',
+    expl:`B₁₁=${JSON.stringify(B11)}\nB₁₂=${JSON.stringify(B12)}\nB₂₁=${JSON.stringify(B21)}\nB₂₂=${JSON.stringify(B22)}`,
+    hl:[4],label:'Partition B',phase:'Setup'}));
+
+  let mults=0;
+  const cumM=Array(7).fill(null);
+
+  for(let i=0;i<7;i++){
+    const[Xm,Ym]=Margs[i];
+    const[[xa,xb],[xc,xd]]=Xm,[[ye,yf],[yg,yh]]=Ym;
+    const iP=[
+      (xa+xd)*(ye+yh),(xc+xd)*ye,xa*(yf-yh),xd*(yg-ye),
+      (xa+xb)*yh,(xc-xa)*(ye+yf),(xb-xd)*(yg+yh)
+    ];
+    const iC11=iP[0]+iP[3]-iP[4]+iP[6];
+    const iC12=iP[2]+iP[4];
+    const iC21=iP[1]+iP[3];
+    const iC22=iP[0]-iP[1]+iP[2]+iP[5];
+
+    const outerHL=PHL_A4[i].flatMap(([qr,qc])=>quadCells(qr,qc));
+    const outerHLB=PHL_B4[i].flatMap(([qr,qc])=>quadCells(qr,qc));
+    const col=PC[i];
+
+    const base4={piVals:cumM.map(v=>v),C:nul4,partitioned:'ab',
+      hlA:outerHL,hlB:outerHLB,hlC:[],hlColor:col,
+      hl:[4+i],mults,phase:`M${i+1}`,miIdx:i,subA:Xm,subB:Ym};
+
+    // mi_start
+    steps.push(Object.assign({},base4,{type:'mi_start',innerPVals:Array(7).fill(null),innerC:nullMat(2),
+      eq:`<span style="color:${col}">Start M${i+1} = ${PFORM_SYM[i]}</span>`,
+      expl:`M${i+1} = ${PFORM_SYM[i]}\nLeft 2×2:\n  ${JSON.stringify(Xm)}\nRight 2×2:\n  ${JSON.stringify(Ym)}`,
+      label:`M${i+1} start`}));
+
+    // mi_pi: inner P₁–P₇
+    const cumIP=Array(7).fill(null);
+    for(let j=0;j<7;j++){
+      mults++;
+      cumIP[j]=iP[j];
+      steps.push(Object.assign({},base4,{type:'mi_pi',mults,
+        innerPiIdx:j,innerPVals:[...cumIP],innerC:nullMat(2),
+        innerHlA:PHL_A2[j],innerHlB:PHL_B2[j],
+        eq:`<span style="color:${col}">M${i+1}</span> → <span style="color:${PC[j]}">P${j+1}=${PFORM_SYM[j]}</span> = <strong style="color:${PC[j]}">${iP[j]}</strong>`,
+        expl:`M${i+1}: inner P${j+1} = ${PFORM_SYM[j]} = ${iP[j]}`,
+        label:`M${i+1}.P${j+1}`}));
+    }
+
+    // mi_combine: assemble 2×2 result
+    const innerCombData=[
+      {ci:[0,0],val:iC11,f:'C₁₁=P₁+P₄−P₅+P₇'},
+      {ci:[0,1],val:iC12,f:'C₁₂=P₃+P₅'},
+      {ci:[1,0],val:iC21,f:'C₂₁=P₂+P₄'},
+      {ci:[1,1],val:iC22,f:'C₂₂=P₁−P₂+P₃+P₆'},
+    ];
+    const partIC=[[null,null],[null,null]];
+    for(let k=0;k<4;k++){
+      const{ci,val,f:formula}=innerCombData[k];
+      partIC[ci[0]][ci[1]]=val;
+      steps.push(Object.assign({},base4,{type:'mi_combine',mults,
+        innerPVals:[...cumIP],innerC:partIC.map(r=>[...r]),
+        innerHlA:[],innerHlB:[],innerCellIdx:k,
+        eq:`<span style="color:${col}">M${i+1}</span> → ${formula} = <strong>${val}</strong>`,
+        expl:`M${i+1}: assembling ${formula} = ${val}`,
+        label:`M${i+1} combine`}));
+    }
+
+    // mi_result
+    cumM[i]=Mres[i];
+    steps.push(Object.assign({},base4,{type:'mi_result',mults,
+      piVals:cumM.map(v=>v),innerPVals:[...cumIP],innerC:Mres[i],
+      innerHlA:[],innerHlB:[],
+      eq:`<span style="color:${col}">✓ M${i+1} complete</span> = [[${Mres[i][0]}],[${Mres[i][1]}]]`,
+      expl:`M${i+1} done.\nResult:\n  [${Mres[i][0]}]\n  [${Mres[i][1]}]`,
+      label:`M${i+1} done`}));
+  }
+
+  // Outer combine: assemble 4×4 C from M values
+  const C11f=addM(subM(addM(M1,M4),M5),M7);
+  const C12f=addM(M3,M5);
+  const C21f=addM(M2,M4);
+  const C22f=addM(subM(addM(M1,M3),M2),M6);
+  const Cfull=combineQ(C11f,C12f,C21f,C22f);
+
+  const combineData4=[
+    {qi:0,qr:0,qc:0,mat:C11f,formula:'C₁₁ = M₁+M₄−M₅+M₇'},
+    {qi:1,qr:0,qc:1,mat:C12f,formula:'C₁₂ = M₃+M₅'},
+    {qi:2,qr:1,qc:0,mat:C21f,formula:'C₂₁ = M₂+M₄'},
+    {qi:3,qr:1,qc:1,mat:C22f,formula:'C₂₂ = M₁−M₂+M₃+M₆'},
+  ];
+  const partialBlocks=[null,null,null,null];
+  for(const ci of combineData4){
+    partialBlocks[ci.qi]=ci.mat;
+    const gridC=combineQ(
+      partialBlocks[0]||nullMat(2),partialBlocks[1]||nullMat(2),
+      partialBlocks[2]||nullMat(2),partialBlocks[3]||nullMat(2)
+    );
+    const hlC4=quadCells(ci.qr,ci.qc);
+    steps.push({type:'combine',quadIdx:ci.qi,piVals:cumM.map(v=>v),C:gridC,partitioned:'ab',
+      hlA:[],hlB:[],hlC:hlC4,hlColor:'#58a6ff',
+      eq:`<span style="color:var(--blue)">${ci.formula}</span>`,
+      expl:`Assembling ${ci.formula}\nResult:\n  [${ci.mat[0]}]\n  [${ci.mat[1]}]`,
+      hl:[12+ci.qi],mults,label:CFORM_SYM[ci.qi].split('=')[0].trim(),phase:'Combine',
+      miIdx:-1,subA:null,subB:null,innerPVals:null,innerC:null});
+  }
+
+  const Cnaive=naiveMul(mA,mB);
+  const match=Cfull.every((r,ri)=>r.every((v,ci)=>v===Cnaive[ri][ci]));
+  steps.push({type:'result',piVals:cumM.map(v=>v),C:Cfull,partitioned:'ab',
+    hlA:[],hlB:[],hlC:[],hlColor:'#3fb950',
+    eq:`<span style="color:#3fb950">✓ Complete! 49 mults  ·  Naive: 64  ·  Saved: 15 (${match?'verified':'error'})</span>`,
+    expl:`C = A × B\n${Cfull.map(r=>'  ['+r.join(', ')+']').join('\n')}\n\n49 mults vs 64 naive (23.4% fewer).\n${match?'✓ Verified.':'⚠ Error.'}`,
+    hl:[16],mults:49,label:'Done',phase:'Result',
+    miIdx:-1,subA:null,subB:null,innerPVals:null,innerC:null});
+
+  return steps;
+}
+
+// ═══════════════════════════════════════════════
+// MATRIX INPUT UI
+// ═══════════════════════════════════════════════
+const PRESETS_2=[
+  {label:'1,2,3,4 × 5,6,7,8',A:[[1,2],[3,4]],B:[[5,6],[7,8]]},
+  {label:'Fibonacci',         A:[[1,1],[1,0]],B:[[1,1],[1,0]]},
+  {label:'3,1,2,4',          A:[[3,1],[2,4]],B:[[1,2],[3,1]]},
+];
+const PRESETS_4=[
+  {label:'Example A',
+   A:[[1,2,1,0],[3,1,2,1],[0,1,3,2],[2,0,1,1]],
+   B:[[2,1,0,1],[1,2,1,0],[0,1,2,1],[1,0,1,2]]},
+  {label:'Identity × B',
+   A:[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],
+   B:[[3,1,4,1],[5,9,2,6],[5,3,5,8],[9,7,9,3]]},
+  {label:'Symmetric',
+   A:[[2,1,1,0],[1,2,0,1],[1,0,2,1],[0,1,1,2]],
+   B:[[1,2,1,2],[2,1,2,1],[1,2,1,2],[2,1,2,1]]},
+];
+
+function buildMatInputs(n){
+  ['A','B'].forEach(lbl=>{
+    const wrap=document.getElementById('mat'+lbl+'Wrap');
+    const pr=n===2?PRESETS_2[0]:PRESETS_4[0];
+    const def=pr[lbl];
+    const grid=document.createElement('div');
+    grid.className='mat-grid';
+    grid.style.gridTemplateColumns=`repeat(${n},30px)`;
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+      const inp=document.createElement('input');
+      inp.type='number';inp.className='mat-cell';
+      inp.id=`inp${lbl}${r}${c}`;inp.value=def[r][c];
+      grid.appendChild(inp);
+    }
+    wrap.innerHTML='';wrap.appendChild(grid);
+  });
+}
+function buildPresets(n){
+  const ps=n===2?PRESETS_2:PRESETS_4;
+  document.getElementById('presetsRow').innerHTML=
+    ps.map((_,i)=>`<button class="pr" onclick="applyPreset(${i})">${ps[i].label}</button>`).join('');
+}
+function applyPreset(i){
+  const n=A.matSize;
+  const pr=n===2?PRESETS_2[i]:PRESETS_4[i];
+  if(!pr)return;
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+    const ea=document.getElementById(`inpA${r}${c}`),eb=document.getElementById(`inpB${r}${c}`);
+    if(ea)ea.value=pr.A[r][c];if(eb)eb.value=pr.B[r][c];
+  }
+  sReset();
+}
+function readMat(lbl){
+  const n=A.matSize;
+  return Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>+(document.getElementById(`inp${lbl}${r}${c}`)?.value)||0));
+}
+function setSize(n){
+  if(A.matSize===n)return;
+  A.matSize=n;
+  document.getElementById('sz2').classList.toggle('on',n===2);
+  document.getElementById('sz4').classList.toggle('on',n===4);
+  document.getElementById('rtreeCard').style.display=n===4?'block':'none';
+  sReset();buildMatInputs(n);buildPresets(n);initLegend();
+}
+
+// ═══════════════════════════════════════════════
+// SOLVER CONTROLS
+// ═══════════════════════════════════════════════
+function setSpd(v){A.solSpd=v;document.getElementById('spdVal').textContent=v+'×';}
+function buildSteps(){
+  stopS();
+  const mA=readMat('A'),mB=readMat('B');
+  A.mA=mA;A.mB=mB;
+  A.steps=A.matSize===2?compute2x2(mA,mB):compute4x4(mA,mB);
+  A.cur=0;A.solSt='ready';
+  document.getElementById('sTotal').textContent=A.steps.length;
+  document.getElementById('histBody').innerHTML='';
+  document.getElementById('resBox').className='res-box';
+  document.getElementById('rtreeCard').style.display=A.matSize===4?'block':'none';
+  updateSUI();renderSStep();
+}
+function sStep(){if(A.cur>=A.steps.length-1)return;A.cur++;renderSStep();if(A.cur>=A.steps.length-1){A.solSt='done';updateSUI();}}
+function sPlay(){
+  if(A.solSt==='done')return;
+  A.solSt='playing';updateSUI();
+  A.solTimer=setInterval(()=>{
+    if(A.cur>=A.steps.length-1){stopS();A.solSt='done';updateSUI();return;}
+    sStep();
+  },Math.round(900/A.solSpd));
+}
+function sPause(){stopS();if(A.solSt==='playing'){A.solSt='paused';updateSUI();}}
+function toggleBar(){
+  const body=document.getElementById('solveBarBody');
+  const btn=document.getElementById('barToggle');
+  const open=!body.classList.contains('collapsed');
+  if(open){
+    body.style.maxHeight=body.scrollHeight+'px';
+    requestAnimationFrame(()=>{body.style.maxHeight='0';body.classList.add('collapsed');});
+    btn.textContent='▼ Show';
+  } else {
+    body.classList.remove('collapsed');
+    body.style.maxHeight=body.scrollHeight+'px';
+    btn.textContent='▲ Hide';
+    setTimeout(()=>{body.style.maxHeight='';},230);
+  }
+}
+function sReset(){
+  stopS();A.steps=[];A.cur=-1;A.solSt='idle';A.mA=null;A.mB=null;
+  document.getElementById('sTotal').textContent='0';document.getElementById('sCur').textContent='0';
+  document.getElementById('histBody').innerHTML='';
+  document.getElementById('eqDisp').innerHTML='Build steps to begin';
+  document.getElementById('eqDisp').style.color='';
+  document.getElementById('explBox').className='expl-box';
+  document.getElementById('explBox').textContent='Click Build, then Step or Play to animate.';
+  document.getElementById('resBox').className='res-box';
+  setSt(0,'—','—','—');renderMainSVG(null);hlPs([]);updateSUI();
+}
+function stopS(){if(A.solTimer){clearInterval(A.solTimer);A.solTimer=null;}}
+function jumpTo(idx){if(idx<0||idx>=A.steps.length)return;if(A.solSt==='playing')sPause();A.cur=idx;renderSStep();updateSUI();}
+function updateSUI(){
+  const{solSt:s,cur,steps}=A;
+  const built=steps.length>0,atEnd=cur>=steps.length-1,playing=s==='playing';
+  document.getElementById('sCur').textContent=Math.max(0,cur);
+  document.getElementById('btnStep').disabled=!built||atEnd||playing;
+  document.getElementById('btnPlay').disabled=!built||atEnd||playing;
+  document.getElementById('btnPause').disabled=!playing;
+  const pill=document.getElementById('spill');
+  const lbl={idle:'Idle',ready:'Ready',playing:'Playing',paused:'Paused',done:'Done'};
+  pill.className='spill s-'+s;pill.textContent=lbl[s]||s;
+}
+
+// ═══════════════════════════════════════════════
+// SOLVER RENDERING
+// ═══════════════════════════════════════════════
+function renderSStep(){
+  const step=A.steps[A.cur];if(!step)return;
+  document.getElementById('sCur').textContent=A.cur;
+  hlPs(step.hl||[]);
+  document.getElementById('eqDisp').innerHTML=step.eq;
+  renderMainSVG(step);
+  const eb=document.getElementById('explBox');
+  eb.className='expl-box live';
+  eb.innerHTML=step.expl.replace(/\n/g,'<br>');
+  const naiveMults=A.matSize===2?8:64;
+  setSt(step.mults,naiveMults,naiveMults-step.mults,step.phase||'—');
+  addHist(step);
+  if(step.type==='result')showRes(step);
+  if(A.matSize===4&&step.piVals)renderRecursionTree(step);
+}
+function setSt(mul,naive,saved,phase){
+  document.getElementById('stMul').textContent=mul;
+  document.getElementById('stNaive').textContent=naive==='—'?'—':naive;
+  document.getElementById('stSaved').textContent=saved==='—'?'—':(saved>=0?saved:'0');
+  document.getElementById('stPhase').textContent=phase;
+}
+function showRes(step){
+  const rb=document.getElementById('resBox');rb.className='res-box show';
+  const nm=A.matSize===2?8:64,saved=nm-step.mults;
+  document.getElementById('rlMult').innerHTML=`<strong style="color:#3fb950">Multiplications used: ${step.mults}</strong>  (Naive: ${nm})`;
+  document.getElementById('rlSaved').innerHTML=`Saved: <strong style="color:#3fb950">${saved}</strong> multiplications (${((saved/nm)*100).toFixed(1)}% reduction)`;
+  const cRows=step.C.map(r=>'['+r.map(v=>v===null?'·':v).join(', ')+']').join(', ');
+  document.getElementById('rlMatrix').innerHTML=`C = <span style="color:#58a6ff;font-family:Consolas,monospace">[${cRows}]</span>`;
+}
+function addHist(step){
+  const tb=document.getElementById('histBody');
+  tb.querySelectorAll('tr').forEach(r=>r.classList.remove('cur'));
+  const existing=document.getElementById('hr'+A.cur);
+  if(existing){existing.classList.add('cur');return;}
+  const tr=document.createElement('tr');
+  tr.id='hr'+A.cur;tr.className='cur';
+  const idx=A.cur;tr.onclick=()=>jumpTo(idx);
+  const resStr=step.type==='pi'&&A.matSize===2?
+    `<span style="color:${PC[step.piIdx]}">${step.piVals[step.piIdx]}</span>`:
+    step.type==='mi_pi'?`<span style="color:${PC[step.innerPiIdx]}">${step.innerPVals[step.innerPiIdx]}</span>`:
+    step.type==='mi_result'?`<span style="color:${PC[step.miIdx]}">✓ M${step.miIdx+1}</span>`:
+    step.type==='result'?'✓ Done':
+    step.type==='combine'||step.type==='mi_combine'?'assembled':
+    '—';
+  const phaseCol=step.type==='pi'?PC[step.piIdx||0]:step.miIdx>=0?PC[step.miIdx]:'#8b949e';
+  tr.innerHTML=`<td>${A.cur}</td><td style="color:${phaseCol}">${step.phase||'—'}</td><td style="font-family:Consolas,monospace;color:var(--txt)">${step.label||'—'}</td><td style="font-family:Consolas,monospace">${resStr}</td>`;
+  tb.appendChild(tr);
+  const wrap=document.querySelector('.hist-wrap');if(wrap)wrap.scrollTop=wrap.scrollHeight;
+  while(tb.children.length>30)tb.removeChild(tb.firstChild);
+}
+
+// ═══════════════════════════════════════════════
+// MAIN SVG RENDERER
+// ═══════════════════════════════════════════════
+function renderMainSVG(step){
+  const svg=document.getElementById('mainSVG');
+  if(!step){
+    svg.setAttribute('viewBox','0 0 900 60');
+    svg.setAttribute('height','60px');
+    svg.innerHTML='';
+    return;
+  }
+  const n=A.matSize;
+  const miTypes=['mi_start','mi_pi','mi_combine','mi_result'];
+  if(n===4&&miTypes.includes(step.type)){
+    renderSVG2Level(svg,step);
+  } else {
+    renderSVGStandard(svg,step,n);
+  }
+}
+
+function renderSVGStandard(svg,step,n){
+  const cs=n===2?72:44,mw=n*cs;
+  const vbH=n===2?278:340,vbW=900;
+  svg.setAttribute('viewBox',`0 0 ${vbW} ${vbH}`);
+  svg.setAttribute('height',vbH+'px');
+
+  const ax=n===2?55:22,bx=ax+mw+(n===2?72:56),cx=bx+mw+(n===2?72:56);
+  const matY=n===2?28:32,piBarY=matY+mw+18;
+  let h='';
+
+  const hlsA=step.hlA?.length?[{cells:step.hlA,color:step.hlColor}]:[];
+  const dA=step.type==='partition_a'||step.type==='partition_b'||step.partitioned==='a'||step.partitioned==='ab';
+  const dB=step.type==='partition_b'||step.partitioned==='ab';
+  h+=drawMatSVG(ax,matY,n,cs,A.mA||null,hlsA,dA&&n===4);
+  if(n===4&&(dA||dB)){
+    const ql=[['A₁₁','A₁₂'],['A₂₁','A₂₂']];
+    for(let qr=0;qr<2;qr++)for(let qc=0;qc<2;qc++){
+      h+=st(ax+qc*2*cs+cs,matY+qr*2*cs+cs+4,ql[qr][qc],{s:9,f:'#58a6ff55',ff:'Consolas,monospace'});
+    }
+  }
+  const symY=matY+mw/2+6;
+  h+=st(ax+mw+(n===2?24:18),symY,'×',{s:n===2?22:18,f:'#484f58'});
+
+  const hlsB=step.hlB?.length?[{cells:step.hlB,color:step.hlColor}]:[];
+  h+=drawMatSVG(bx,matY,n,cs,A.mB||null,hlsB,dB&&n===4);
+  if(n===4&&dB){
+    const ql=[['B₁₁','B₁₂'],['B₂₁','B₂₂']];
+    for(let qr=0;qr<2;qr++)for(let qc=0;qc<2;qc++){
+      h+=st(bx+qc*2*cs+cs,matY+qr*2*cs+cs+4,ql[qr][qc],{s:9,f:'#f0883e55',ff:'Consolas,monospace'});
+    }
+  }
+  h+=st(bx+mw+(n===2?24:18),symY,'=',{s:n===2?22:18,f:'#484f58'});
+
+  const hlsC=step.hlC?.length?[{cells:step.hlC,color:'#58a6ff'}]:[];
+  const cData=step.C||nullMat(n);
+  const dC=step.type==='combine'||step.type==='result';
+  h+=drawMatSVG(cx,matY,n,cs,cData,hlsC,dC&&n===4);
+  if(n===4&&dC){
+    const ql=[['C₁₁','C₁₂'],['C₂₁','C₂₂']];
+    for(let qr=0;qr<2;qr++)for(let qc=0;qc<2;qc++){
+      h+=st(cx+qc*2*cs+cs,matY+qr*2*cs+cs+4,ql[qr][qc],{s:9,f:'#58a6ff55',ff:'Consolas,monospace'});
+    }
+  }
+  h+=st(ax+mw/2,matY-8,'A',{s:12,w:'bold',f:'#8b949e'});
+  h+=st(bx+mw/2,matY-8,'B',{s:12,w:'bold',f:'#8b949e'});
+  h+=st(cx+mw/2,matY-8,'C',{s:12,w:'bold',f:'#8b949e'});
+
+  // Pi/Mi indicator bar
+  const piVals=step.piVals||Array(7).fill(null);
+  const activePi=step.type==='pi'?step.piIdx:-1;
+  const barW=vbW-60;const boxW=(barW-6*8)/7;
+  for(let i=0;i<7;i++){
+    const bx2=30+i*(boxW+8),col=PC[i];
+    const done=piVals[i]!==null,isAct=i===activePi;
+    h+=sr(bx2,piBarY,boxW,34,{f:done?col+'18':'#0a0e13',k:isAct?col:done?col+'77':'#21262d',rx:5,sw:isAct?2:1});
+    const lbl2=n===2?PL[i]:`M${i+1}`;
+    h+=st(bx2+boxW/2,piBarY+13,lbl2,{s:10,w:isAct?'bold':'normal',f:done?col:'#3a4050',ff:'Consolas,monospace'});
+    if(done){
+      if(n===2){const sv=String(piVals[i]);h+=st(bx2+boxW/2,piBarY+26,sv,{s:sv.length>4?7:9,f:'#e6edf3',ff:'Consolas,monospace'});}
+      else{h+=st(bx2+boxW/2,piBarY+26,'✓',{s:10,f:col});}
+    }
+  }
+  svg.innerHTML=h;
+}
+
+function renderSVG2Level(svg,step){
+  const vbW=900,vbH=460;
+  svg.setAttribute('viewBox',`0 0 ${vbW} ${vbH}`);
+  svg.setAttribute('height',vbH+'px');
+
+  // ── Level 1: 4×4 matrices ──
+  const n=4,cs1=36,mw1=n*cs1; // mw1=144
+  const ax1=22,bx1=ax1+mw1+52; // ax1=22, bx1=218. No C matrix shown here.
+  const matY1=18;
+  const dashed=step.partitioned==='ab';
+  let h='';
+
+  const hlsA=step.hlA?.length?[{cells:step.hlA,color:step.hlColor}]:[];
+  h+=drawMatSVG(ax1,matY1,n,cs1,A.mA||null,hlsA,dashed);
+  if(dashed){
+    const ql=[['A₁₁','A₁₂'],['A₂₁','A₂₂']];
+    for(let qr=0;qr<2;qr++)for(let qc=0;qc<2;qc++)
+      h+=st(ax1+qc*2*cs1+cs1,matY1+qr*2*cs1+cs1+3,ql[qr][qc],{s:8,f:'#58a6ff44',ff:'Consolas,monospace'});
+  }
+  h+=st(ax1+mw1/2,matY1-5,'A',{s:11,w:'bold',f:'#8b949e'});
+  h+=st(ax1+mw1+18,matY1+mw1/2+5,'×',{s:18,f:'#484f58'});
+
+  const hlsB=step.hlB?.length?[{cells:step.hlB,color:step.hlColor}]:[];
+  h+=drawMatSVG(bx1,matY1,n,cs1,A.mB||null,hlsB,dashed);
+  if(dashed){
+    const ql=[['B₁₁','B₁₂'],['B₂₁','B₂₂']];
+    for(let qr=0;qr<2;qr++)for(let qc=0;qc<2;qc++)
+      h+=st(bx1+qc*2*cs1+cs1,matY1+qr*2*cs1+cs1+3,ql[qr][qc],{s:8,f:'#f0883e44',ff:'Consolas,monospace'});
+  }
+  h+=st(bx1+mw1/2,matY1-5,'B',{s:11,w:'bold',f:'#8b949e'});
+
+  // Level 1 label on right side
+  const miIdx=step.miIdx,col=miIdx>=0?PC[miIdx]:'#8b949e';
+  const miLabel=miIdx>=0?`M${miIdx+1} = ${PFORM_SYM[miIdx]}`:'';
+  h+=st(bx1+mw1+22,matY1+mw1/2-6,miLabel?`Computing:`:'',{s:8,f:'#484f58',a:'start'});
+  h+=st(bx1+mw1+22,matY1+mw1/2+8,miLabel,{s:9,f:col,a:'start',ff:'Consolas,monospace'});
+
+  // ── Separator ──
+  const sepY=matY1+mw1+14; // =18+144+14=176
+  h+=`<line x1="0" y1="${sepY}" x2="${vbW}" y2="${sepY}" stroke="#21262d" stroke-width="1"/>`;
+
+  // ── Level 2: 2×2 sub-matrices ──
+  const cs2=58,mw2=2*cs2; // mw2=116
+  const sub2Y=sepY+20; // =196
+  const sax=228,sbx=sax+mw2+60,scx=sbx+mw2+60;
+  // sax=228, sbx=404, scx=580. Right edge=696 ✓
+
+  if(step.subA&&step.subB){
+    // Inner Pi highlight on sub-matrices (only for mi_pi)
+    const iPiIdx=step.type==='mi_pi'?step.innerPiIdx:-1;
+    const ihAcells=step.innerHlA?.length?step.innerHlA:[];
+    const ihBcells=step.innerHlB?.length?step.innerHlB:[];
+    const ihCol=iPiIdx>=0?PC[iPiIdx]:col;
+
+    const hlSA=ihAcells.length?[{cells:ihAcells,color:ihCol}]:[];
+    const hlSB=ihBcells.length?[{cells:ihBcells,color:ihCol}]:[];
+
+    h+=drawMatSVG(sax,sub2Y,2,cs2,step.subA,hlSA);
+    h+=st(sax+mw2/2,sub2Y-10,'operand X',{s:8,f:col+'aa'});
+    h+=st(sax+mw2+18,sub2Y+mw2/2+5,'×',{s:18,f:'#484f58'});
+
+    h+=drawMatSVG(sbx,sub2Y,2,cs2,step.subB,hlSB);
+    h+=st(sbx+mw2/2,sub2Y-10,'operand Y',{s:8,f:col+'aa'});
+    h+=st(sbx+mw2+18,sub2Y+mw2/2+5,'=',{s:18,f:'#484f58'});
+
+    // Result matrix: innerC (partial or full)
+    const hlSC=step.type==='mi_result'?[{cells:[[0,0],[0,1],[1,0],[1,1]],color:col}]:[];
+    h+=drawMatSVG(scx,sub2Y,2,cs2,step.innerC||nullMat(2),hlSC);
+    h+=st(scx+mw2/2,sub2Y-10,`M${miIdx+1}`,{s:10,w:'bold',f:col});
+
+    // Inner Pi label for current step
+    if(step.type==='mi_pi'&&iPiIdx>=0){
+      h+=st(vbW/2,sub2Y+mw2+14,
+        `P${iPiIdx+1} = ${PFORM_SYM[iPiIdx]} = ${step.innerPVals[iPiIdx]}`,
+        {s:10,f:PC[iPiIdx],ff:'Consolas,monospace'});
+    }
+  }
+
+  // ── Inner Pi bar (P₁–P₇ within current Mi) ──
+  const innerBarY=sub2Y+mw2+28; // =196+116+28=340
+  const innerPVals=step.innerPVals||Array(7).fill(null);
+  const barW=vbW-60;const boxW=(barW-6*6)/7;
+  h+=st(16,innerBarY+15,'inner:',{s:7.5,f:'#484f58',a:'start'});
+  for(let j=0;j<7;j++){
+    const bx2=36+j*(boxW+6),lc=PC[j];
+    const done=innerPVals[j]!==null,isAct=step.type==='mi_pi'&&j===step.innerPiIdx;
+    h+=sr(bx2,innerBarY,boxW,28,{f:done?lc+'18':'#0a0e13',k:isAct?lc:done?lc+'77':'#21262d',rx:4,sw:isAct?2:1});
+    h+=st(bx2+boxW/2,innerBarY+13,`P${j+1}`,{s:8.5,w:isAct?'bold':'normal',f:done?lc:'#3a4050',ff:'Consolas,monospace'});
+    if(done){
+      const sv=String(innerPVals[j]);
+      h+=st(bx2+boxW/2,innerBarY+24,sv,{s:sv.length>4?6:8,f:'#c9d1d9',ff:'Consolas,monospace'});
+    }
+  }
+
+  // ── Outer Mi bar (M₁–M₇ overall) ──
+  const outerBarY=innerBarY+36+6; // =382
+  const piVals=step.piVals||Array(7).fill(null);
+  h+=st(16,outerBarY+15,'outer:',{s:7.5,f:'#484f58',a:'start'});
+  for(let i=0;i<7;i++){
+    const bx2=36+i*(boxW+6),lc=PC[i];
+    const done=piVals[i]!==null,isAct=i===miIdx;
+    h+=sr(bx2,outerBarY,boxW,28,{f:done?lc+'18':'#0a0e13',k:isAct?lc:done?lc+'77':'#21262d',rx:4,sw:isAct?2:1});
+    h+=st(bx2+boxW/2,outerBarY+13,`M${i+1}`,{s:8.5,w:isAct?'bold':'normal',f:done?lc:'#3a4050',ff:'Consolas,monospace'});
+    if(done){h+=st(bx2+boxW/2,outerBarY+24,'✓',{s:9,f:lc});}
+    else if(isAct){h+=st(bx2+boxW/2,outerBarY+24,'…',{s:9,f:lc+'88',ff:'Consolas,monospace'});}
+  }
+
+  svg.innerHTML=h;
+}
+
+// ═══════════════════════════════════════════════
+// RECURSION TREE (4×4 mode)
+// ═══════════════════════════════════════════════
+function renderRecursionTree(step){
+  const svg=document.getElementById('rtreeSVG');if(!svg)return;
+  const W=640,H=120;
+  const piVals=step?.piVals||Array(7).fill(null);
+  const activePi=step?.type==='pi'?step.piIdx:-1;
+  let h='';
+
+  // Root node
+  const rootX=W/2,rootY=16,nodeH=22,nodeW=48;
+  const rootDone=step?.type==='result'||step?.type==='combine';
+  h+=sr(rootX-nodeW/2,rootY,nodeW,nodeH,{f:rootDone?'#3fb95018':'#0a0e13',k:rootDone?'#3fb950':'#30363d',rx:4});
+  h+=st(rootX,rootY+15,'4×4',{s:9,f:rootDone?'#3fb950':'#8b949e',ff:'Consolas,monospace'});
+
+  // 7 leaf nodes
+  const leafY=70,leafW=52,leafH=22;
+  const totalW=7*(leafW+8)-8;
+  const startX=(W-totalW)/2;
+  for(let i=0;i<7;i++){
+    const lx=startX+i*(leafW+8);
+    const col=PC[i];
+    const done=piVals[i]!==null;
+    const isAct=i===activePi;
+    h+=`<line x1="${rootX}" y1="${rootY+nodeH}" x2="${lx+leafW/2}" y2="${leafY}" stroke="${col}" stroke-width="${isAct?1.8:.8}" opacity="${done?.7:.25}"/>`;
+    h+=sr(lx,leafY,leafW,leafH,{f:done?col+'18':'#0a0e13',k:isAct?col:done?col+'77':'#21262d',rx:4,sw:isAct?2:1});
+    h+=st(lx+leafW/2,leafY+15,`M${i+1}`,{s:9,w:isAct?'bold':'normal',f:done?col:'#3a4050',ff:'Consolas,monospace'});
+    if(done){
+      h+=st(lx+leafW/2,leafY+leafH+12,'7 mults',{s:7,f:col+'99'});
+    } else {
+      h+=st(lx+leafW/2,leafY+leafH+12,'2×2',{s:7,f:'#3a4050',ff:'Consolas,monospace'});
+    }
+  }
+
+  // Legend
+  h+=st(10,H-4,'Root: 4×4 problem',{s:8,f:'#484f58',a:'start'});
+  h+=st(W-10,H-4,'Each leaf: one 2×2 Strassen = 7 scalar multiplications',{s:8,f:'#484f58',a:'end'});
+
+  svg.innerHTML=h;
+}
+
+// ═══════════════════════════════════════════════
+// COLOR LEGEND
+// ═══════════════════════════════════════════════
+function initLegend(){
+  const n=A.matSize;
+  const items=[
+    ...PL.map((lbl,i)=>({color:PC[i],label:n===2?lbl:`M${i+1} (${lbl})`})),
+    {color:'#58a6ff',label:'Combine / Active cell'},
+    {color:'#3fb950',label:'Result'},
+  ];
+  document.getElementById('solLeg').innerHTML=items.map(it=>
+    `<span class="sli"><span class="sld" style="background:${it.color}"></span>${it.label}</span>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════
+// CROSSOVER COMPARISON TOOL
+// Total arithmetic operations: mults + additions
+// Naive:   n³ mults + n²(n-1) adds  ≈  2n³ − n²
+// Strassen: T(n) = 7T(n/2) + 18·(n/2)²,  T(1)=1
+//   → at n=512: Strassen > Naive (overhead wins)
+//   → at n=1024: Strassen < Naive (asymptotic wins)
+// This shows why Strassen's crossover is not "free"
+// ═══════════════════════════════════════════════
+const CO_NS=[2,4,8,16,32,64,128,256,512,1024];
+
+function coNaive(n){return n*n*n + n*n*(n-1);}  // total mults + adds
+function coStras(n){
+  // T(n) = 7·T(n/2) + 18·(n/2)²,  T(1)=1 mult
+  if(n<=1)return 1;
+  return 7*coStras(n/2)+18*(n/2)*(n/2);
+}
+// Pre-compute to avoid repeated recursion
+const CO_NAIVE=CO_NS.map(coNaive);
+const CO_STRAS=CO_NS.map(coStras);
+
+function initCrossover(activeIdx){renderCrossover(activeIdx||4);}
+function updateCrossover(idx){renderCrossover(idx);}
+
+function renderCrossover(idx){
+  const chart=document.getElementById('coChart');if(!chart)return;
+  const ow=420,oh=185,padL=52,padR=14,padT=14,padB=28;
+  const cw=ow-padL-padR,ch=oh-padT-padB;
+
+  const allVals=[...CO_NAIVE,...CO_STRAS];
+  const yMax=Math.log10(Math.max(...allVals));
+  const yMin=Math.log10(Math.min(...allVals));
+
+  function px(i){return padL+i*(cw/(CO_NS.length-1));}
+  function py(val){return padT+ch-(Math.log10(Math.max(val,1))-yMin)/(yMax-yMin)*ch;}
+
+  let h='';
+
+  // Horizontal grid lines
+  for(let y=2;y<=10;y++){
+    const yp=padT+ch-(y-yMin)/(yMax-yMin)*ch;
+    if(yp<padT||yp>padT+ch)continue;
+    h+=`<line x1="${padL}" y1="${yp}" x2="${padL+cw}" y2="${yp}" stroke="#1c2128" stroke-width="1"/>`;
+    h+=`<text x="${padL-4}" y="${yp+3}" text-anchor="end" font-family="Consolas,monospace" font-size="7" fill="#3a4050">10^${y}</text>`;
+  }
+  CO_NS.forEach((_,i)=>{
+    h+=`<line x1="${px(i)}" y1="${padT}" x2="${px(i)}" y2="${padT+ch}" stroke="#1c2128" stroke-width="1"/>`;
+  });
+
+  // Shade region where Strassen > Naive (Strassen slower — orange tint)
+  const ovhPts=CO_NS.map((n,i)=>`${px(i)},${Math.max(padT,py(CO_STRAS[i]))}`).join(' ');
+  const undPts=CO_NS.map((n,i)=>`${px(i)},${Math.max(padT,py(CO_NAIVE[i]))}`).reverse().join(' ');
+  h+=`<polygon points="${ovhPts} ${undPts}" fill="#f0883e08"/>`;
+
+  // Naive curve (orange)
+  const naivePts=CO_NS.map((_,i)=>`${px(i)},${Math.max(padT+1,py(CO_NAIVE[i]))}`).join(' ');
+  h+=`<polyline points="${naivePts}" fill="none" stroke="#f0883e" stroke-width="2"/>`;
+
+  // Strassen curve (blue)
+  const strasPts=CO_NS.map((_,i)=>`${px(i)},${py(CO_STRAS[i])}`).join(' ');
+  h+=`<polyline points="${strasPts}" fill="none" stroke="#58a6ff" stroke-width="2"/>`;
+
+  // Axes
+  h+=`<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+ch}" stroke="#30363d" stroke-width="1"/>`;
+  h+=`<line x1="${padL}" y1="${padT+ch}" x2="${padL+cw}" y2="${padT+ch}" stroke="#30363d" stroke-width="1"/>`;
+
+  // X labels
+  CO_NS.forEach((n,i)=>{
+    if([0,2,4,6,8,9].includes(i))
+      h+=`<text x="${px(i)}" y="${padT+ch+14}" text-anchor="middle" font-family="Consolas,monospace" font-size="8" fill="#484f58">${n}</text>`;
+  });
+  h+=`<text x="${padL+cw/2}" y="${oh-1}" text-anchor="middle" font-family="Segoe UI,sans-serif" font-size="8" fill="#484f58">n (matrix size)</text>`;
+
+  // Legend
+  h+=`<rect x="${padL+cw-90}" y="${padT+2}" width="88" height="36" fill="#0a0e1388" rx="3"/>`;
+  h+=`<line x1="${padL+cw-84}" y1="${padT+11}" x2="${padL+cw-66}" y2="${padT+11}" stroke="#f0883e" stroke-width="2"/>`;
+  h+=`<text x="${padL+cw-62}" y="${padT+14}" font-family="Segoe UI,sans-serif" font-size="8" fill="#f0883e">Naive total ops</text>`;
+  h+=`<line x1="${padL+cw-84}" y1="${padT+26}" x2="${padL+cw-66}" y2="${padT+26}" stroke="#58a6ff" stroke-width="2"/>`;
+  h+=`<text x="${padL+cw-62}" y="${padT+29}" font-family="Segoe UI,sans-serif" font-size="8" fill="#58a6ff">Strassen total ops</text>`;
+
+  // Active indicator
+  const nv=CO_NAIVE[idx],sv=CO_STRAS[idx];
+  h+=`<line x1="${px(idx)}" y1="${padT}" x2="${px(idx)}" y2="${padT+ch}" stroke="#ffffff22" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+  h+=`<circle cx="${px(idx)}" cy="${Math.max(padT+3,py(nv))}" r="4" fill="#f0883e"/>`;
+  h+=`<circle cx="${px(idx)}" cy="${py(sv)}" r="4" fill="#58a6ff"/>`;
+  // Crossover marker at n≈700 (between index 8 and 9)
+  const crossX=(px(8)+px(9))/2;
+  h+=`<line x1="${crossX}" y1="${padT}" x2="${crossX}" y2="${padT+ch}" stroke="#3fb95066" stroke-width="1" stroke-dasharray="3,3"/>`;
+  h+=`<text x="${crossX}" y="${padT+10}" text-anchor="middle" font-family="Segoe UI,sans-serif" font-size="7" fill="#3fb95099">crossover ≈n700</text>`;
+
+  chart.innerHTML=h;
+
+  // Info text
+  const an=CO_NS[idx];
+  const strasWins=sv<nv;
+  document.getElementById('coInfo').innerHTML=
+    `n = <strong>${an}</strong>: &nbsp;`+
+    `<span style="color:#f0883e">Naive = ${Math.round(nv).toLocaleString()} ops</span> &nbsp;`+
+    `<span style="color:#58a6ff">Strassen ≈ ${Math.round(sv).toLocaleString()} ops</span><br>`+
+    (strasWins
+      ?`<span style="color:#3fb950">✓ Strassen wins — uses ${((sv/nv)*100).toFixed(1)}% of naive's total operations</span>`
+      :`<span style="color:#f85149">✗ Strassen is slower here — ${((sv/nv)*100).toFixed(1)}% of naive's total ops (overhead from extra additions dominates at small n)</span>`);
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',()=>{
+  renderMainSVG(null);
+});
+</script>
+</body>
+</html>
